@@ -46,30 +46,29 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
         return <p>No se encontraron datos</p>;
     }
 
-    const metricConfig: Record<string, { label: string }> = {
-        temperatura: { label: "Temperatura" },
-        humedad: { label: "Humedad Relativa" },
-        humedadAbs: { label: "Humedad Absoluta" },
-        velocidadViento: { label: "Velocidad del Viento" },
-        presionBarometrica: { label: "Presión Barométrica" },
+    const metricConfig: Record<string, { label: string; apiKey: string }> = {
+        temperatura: { label: "Temperatura", apiKey: "temperatura" },
+        humedad: { label: "Humedad Relativa", apiKey: "humedadRelativa" },
+        humedadAbs: { label: "Humedad Absoluta", apiKey: "humedadAbsoluta" },
+        velocidadViento: { label: "Velocidad del Viento", apiKey: "velocidadViento" },
+        presionBarometrica: { label: "Presión Barométrica", apiKey: "presionBarometrica" },
     };
 
-    const { label } = metricConfig[metric];
+    const { label, apiKey } = metricConfig[metric];
 
     const chartData = {
         labels: data.map((item) => {
-            let date = new Date(item.timestamp)
+            let date = new Date(item.timestamp);
             const hours = date.getUTCHours().toString().padStart(2, '0');
             const minutes = date.getUTCMinutes().toString().padStart(2, '0');
             const seconds = date.getUTCSeconds().toString().padStart(2, '0');
             const timeString = `${hours}:${minutes}:${seconds}`;
             return timeString;
         }),
-        //labels: data.map((item) => new Date(item.timestamp).toLocaleTimeString()),
         datasets: [
             {
                 label: label,
-                data: data.map((item) => item[metric]),
+                data: data.map((item) => item[apiKey]),
                 fill: false,
                 backgroundColor: "rgba(75,192,192,0.4)",
                 borderColor: "rgba(75,192,192,1)",
