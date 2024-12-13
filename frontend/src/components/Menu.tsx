@@ -22,23 +22,23 @@ const Menu = () => {
                 <div className="grid">
                     <Link to="#" className="menu-item" onClick={() => mostrarGrafica('temperatura')}>
                         <img src={temperatura} alt="Temperatura" />
-                        <p>Temperatura °C</p>
+                        <p>Temperatura °C VS Tiempo</p>
                     </Link>
                     <Link to="#" className="menu-item" onClick={() => mostrarGrafica('humedad')}>
                         <img src={humedad} alt="Humedad Relativa" />
-                        <p>Humedad Relativa %</p>
+                        <p>Humedad Relativa % VS Tiempo</p>
                     </Link>
                     <Link to="#" className="menu-item" onClick={() => mostrarGrafica('humedadAbs')}>
                         <img src={humedadAbs} alt="Humedad Absoluta" />
-                        <p>Humedad Absoluta kg/m³</p>
+                        <p>Humedad Absoluta kg/m³ VS Tiempo</p>
                     </Link>
                     <Link to="#" className="menu-item" onClick={() => mostrarGrafica('velocidadViento')}>
                         <img src={velocidadViento} alt="Velocidad del Viento" />
-                        <p>Velocidad del Viento m/s</p>
+                        <p>Velocidad del Viento m/s VS Tiempo</p>
                     </Link>
                     <Link to="#" className="menu-item" onClick={() => mostrarGrafica('presionBarometrica')}>
                         <img src={presionBarometrica} alt="Presión Barométrica" />
-                        <p>Presión Barométrica Pa</p>
+                        <p>Presión Barométrica Pa VS Tiempo</p>
                     </Link>
                 </div>
             </div>
