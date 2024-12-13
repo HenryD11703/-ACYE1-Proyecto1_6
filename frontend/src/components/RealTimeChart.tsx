@@ -25,13 +25,23 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
     const fetchData = async () => {
         try {
             const response = await axios.get("http://localhost:5000/obtener_datos");
-            setData(response.data);
+            const newData = response.data;
+
+            setData((prevData) => {
+                const updatedData = [...prevData, newData];
+                if (updatedData.length > 10) {
+                    updatedData.shift();
+                }
+                return updatedData;
+            });
+
             setLoading(false);
         } catch (error) {
             console.error("Error al obtener datos:", error);
             setLoading(false);
         }
     };
+
     useEffect(() => {
         fetchData();
         const interval = setInterval(fetchData, 1000);
@@ -75,6 +85,7 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
             },
         ],
     };
+
 
     return (
         <div className="chart-container">
