@@ -57,11 +57,11 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
     }
 
     const metricConfig: Record<string, { label: string; apiKey: string }> = {
-        temperatura: { label: "Temperatura", apiKey: "temperatura" },
-        humedad: { label: "Humedad Relativa", apiKey: "humedadRelativa" },
-        humedadAbs: { label: "Humedad Absoluta", apiKey: "humedadAbsoluta" },
-        velocidadViento: { label: "Velocidad del Viento", apiKey: "velocidadViento" },
-        presionBarometrica: { label: "Presión Barométrica", apiKey: "presionBarometrica" },
+        temperatura: { label: "Temperatura °C vs Tiempo", apiKey: "temperatura" },
+        humedad: { label: "Humedad Relativa % vs Tiempo", apiKey: "humedadRelativa" },
+        humedadAbs: { label: "Humedad Absoluta kg/m³ vs Tiempo", apiKey: "humedadAbsoluta" },
+        velocidadViento: { label: "Velocidad del Viento m/s vs Tiempo", apiKey: "velocidadViento" },
+        presionBarometrica: { label: "Presión Barométrica Pa vs Tiempo", apiKey: "presionBarometrica" },
     };
 
     const { label, apiKey } = metricConfig[metric];
