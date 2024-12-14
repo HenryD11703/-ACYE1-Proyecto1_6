@@ -42,6 +42,7 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
   };
 
   const handleFilterToggle = () => {
+    setData([])
     setFilterEnabled(!filterEnabled);
   };
 
@@ -109,7 +110,7 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
       apiKey: "velocidadViento",
     },
     presionBarometrica: {
-      label: "Presión Barométrica Pa vs Tiempo",
+      label: "Presión Barométrica hPa vs Tiempo",
       apiKey: "presionBarometrica",
     },
   };
