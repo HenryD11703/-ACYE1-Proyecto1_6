@@ -47,17 +47,17 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
 
   const fetchData = async () => {
     try {
-        if (filterEnabled) {
-          if (startDate && endDate) {
-            const response = await axios.post("http://localhost:5000/ObtenerDatosPorFechas", {
-              fechaInicial: startDate,
-              fechaFinal: endDate
-            });
-            setData(response.data);
-          }else{
-            setLoading(false);
-          }
+      if (filterEnabled) {
+        if (startDate && endDate) {
+          const response = await axios.post("http://localhost:5000/ObtenerDatosPorFechas", {
+            fechaInicial: startDate,
+            fechaFinal: endDate
+          });
+          setData(response.data);
         } else {
+          setLoading(false);
+        }
+      } else {
         // Petición sin filtros
         const response = await axios.get("http://localhost:5000/obtener_datos");
         const newData = response.data;
@@ -110,7 +110,7 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
     },
     presionBarometrica: {
       label: "Presión Barométrica Pa vs Tiempo",
-      apiKey: "pressure",
+      apiKey: "presionBarometrica",
     },
   };
 
@@ -151,7 +151,7 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
             />
             Aplicar rangos de fecha
           </label>
-          
+
           {filterEnabled && (
             <div style={{
               display: "flex",
