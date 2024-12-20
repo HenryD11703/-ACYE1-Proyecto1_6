@@ -35,17 +35,27 @@ def obtener_datos():
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     temperaturaExterna = asyncio.run(getweather())
     datos['temperaturaExterna'] = temperaturaExterna
+    if (datos['humedadSuelo'] == 0 ):
+        datos['humedadSuelo'] = 80 # Húmedo
+    else:
+        datos['humedadSuelo'] = 20 # Seco
     # ------------------ ESTO ES PARA PRUEBAS ------------------
+    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    # temperaturaExterna = asyncio.run(getweather())
     # datos = {
     #         "timestamp": datetime.now(),
     #         "temperaturaInterna": random.randint(10,80) * 100,
     #         "temperaturaExterna": temperaturaExterna,
-    #         "humedadSuelo": random.random() * 10,
+    #         "humedadSuelo": random.randint(0,1),
     #         "nivel": random.random() * 10,
     #         "periodoActivacionAgua": random.randint(0,1),
     #         "periodoActivacionAire": random.randint(0,1)
     #     }
     # datos['temperaturaExterna'] = temperaturaExterna
+    # if (datos['humedadSuelo'] == 0 ):
+    #     datos['humedadSuelo'] = 80 # Húmedo
+    # else:
+    #     datos['humedadSuelo'] = 20 # Seco
     return jsonify(datos), 200
     
 @app.route('/ObtenerDatosPorFechas', methods=['POST'])
