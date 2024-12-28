@@ -18,6 +18,8 @@ client = MongoClient('mongodb+srv://georgealexdlb:5QAwFL1u31UrHytj@cluster0.9bed
 db = client['datos_tiempo_real']
 collection = db['lecturas']
 
+
+
 async def getweather() -> None:
     # declare the client. the measuring unit used defaults to the metric system (celcius, km/h, etc.)
     async with python_weather.Client(unit=python_weather.METRIC) as client:
@@ -26,8 +28,18 @@ async def getweather() -> None:
         
         # returns the current day's forecast temperature (int)
         return weather.temperature
+    
+# Ruta para guardar datos en MongoDB
+@app.route('/guardar_datos', methods=['POST'])
+def guardar_datos():
+    if request.is_json:
+        datos = request.get_json()
+        datos['timestamp'] = datetime.now()  # Agregar la hora actual
+        result = collection.insert_one(datos)   # Guardar en MongoDB
+        return jsonify({"message": "Datos guardados", "id": str(result.inserted_id)}), 201
+    else:
+        return jsonify({"error": "El formato no es JSON"}), 400
       
-
 # Ruta para obtener todos los datos
 @app.route('/obtener_datos', methods=['GET'])
 def obtener_datos():
@@ -56,6 +68,7 @@ def obtener_datos():
     #     datos['humedadSuelo'] = 80 # Húmedo
     # else:
     #     datos['humedadSuelo'] = 20 # Seco
+    print(datos)
     return jsonify(datos), 200
     
 @app.route('/ObtenerDatosPorFechas', methods=['POST'])
@@ -66,12 +79,12 @@ def getMedicionesPorFechas():
     fechaFin = data.get('fechaFinal')
     filtro = {}
 
-    # Convertir fechas a formato datetime
+    # Convertir fechas a formato datetime incluyendo la hora
     if fechaIni:
-        fechaIni = datetime.strptime(fechaIni, '%Y-%m-%d')
+        fechaIni = datetime.strptime(fechaIni, '%Y-%m-%dT%H:%M')
         filtro['timestamp'] = {'$gte': fechaIni}
     if fechaFin:
-        fechaFin = datetime.strptime(fechaFin, '%Y-%m-%d')
+        fechaFin = datetime.strptime(fechaFin, '%Y-%m-%dT%H:%M')
         if 'timestamp' in filtro:
             filtro['timestamp']['$lte'] = fechaFin
         else:
@@ -81,6 +94,11 @@ def getMedicionesPorFechas():
     datos = list(collection.find(filtro))
     for dato in datos:
         dato['_id'] = str(dato['_id'])  # Convertir ObjectId a string
+        # Asegurar que el timestamp se envíe en formato ISO
+        if 'timestamp' in dato:
+            dato['timestamp'] = dato['timestamp']
+        
+        #print(datos)
 
     return jsonify(datos), 200
 
