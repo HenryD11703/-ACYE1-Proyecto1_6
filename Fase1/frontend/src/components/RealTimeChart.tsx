@@ -90,11 +90,6 @@ const RealTimeChart: React.FC<RealTimeChartProps> = ({ metric }) => {
     return <p>Cargando datos...</p>;
   }
 
-  // if (!data.length) {
-  //   setFilterEnabled(false);
-  //   return <p>No se encontraron datos</p>;
-  // }
-
   const metricConfig: Record<string, { label: string; apiKey: string }> = {
     temperatura: { label: "Temperatura °C vs Tiempo", apiKey: "temperatura" },
     humedad: {

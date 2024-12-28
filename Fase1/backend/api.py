@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 
 # Crear la aplicación Flask
-app = Flask(_name_)
+app = Flask(__name__)
 
 # Conectar con MongoDB
 # Reemplaza <CONNECTION_STRING> con tu conexión de MongoDB
@@ -57,7 +57,7 @@ def getMedicionesPorFechas():
 
 
 # Iniciar el servidor
-if _name_ == '_main_':
+if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 #{"temperatura": 23, "humedad": 60}
