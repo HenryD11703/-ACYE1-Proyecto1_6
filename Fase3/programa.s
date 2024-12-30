@@ -1,29 +1,29 @@
 .data
     csv_filename:    .string "datos.csv"
-    buffer:         .skip 2048        // Buffer para leer el archivo
-    output_msg:     .string "El archivo CSV se ha leído correctamente.\nSe encontraron los siguientes datos:\n\nEncabezados:\n- Fecha y Hora\n- Temperatura Externa\n- Temperatura Interna\n- Humedad Relativa\n- Nivel de Agua\n\nNúmero de registros leídos: 12\n"
+    buffer:         .skip 4096        // Buffer para manejar los 10 registros
+    output_msg:     .string "El archivo CSV se ha leído correctamente.\nSe encontraron los siguientes datos:\n\nEncabezados:\n- Fecha y Hora\n- Temperatura Interna (°C)\n- Temperatura Externa (°C)\n- Estado del Suelo\n- Nivel de Agua\n- Sistema de Riego\n- Sistema de Ventilación\n\nNúmero de registros leídos: 10\n"
     output_len = . - output_msg
     error_msg:      .string "Error al abrir el archivo CSV.\n"
     error_len = . - error_msg
 
-    // Mensajes del menú
+    // Mensajes del menú (sin cambios)
     menu:       .string "\n=== MENU PRINCIPAL ===\n1. Nombres de integrantes\n2. Análisis Estadístico\n3. Exportar resultados\n4. Salir\nOpción: "
     menu_len = . - menu
-    // Nombres actualizados de los integrantes
+    
+    // Nombres de integrantes (sin cambios)
     nombres:    .string "\nIntegrantes del grupo:\n\n1. Henry David Quel Santos - 202004071\n2. Pablo Alejandro Marroquin Cutz - 202200214\n3. Eric David Rojas de Leon - 202200331\n4. Jore Alejandro de Leon Batres - 202111277\n5. Roberto Miguel Garcia Santizo - 202201724\n6. Jose Javier Bonilla Salazar - 202200035\n7. Gerardo Leonel Ortiz Tobar - 202200196\n8. David Isaac García Mejía - 202202077\n\n"
     nombres_len = . - nombres
     
-    // Datos de ejemplo (10 mediciones
-    num_datos = 10
+    num_datos = 10            // Actualizado a 10 registros
     // Buffer para entrada
     input_buffer: .skip 8
     // Archivo de salida
     filename:   .string "resultados.txt"
     // Mensajes de análisis
     msg_analisis: .string "\n=== RESULTADOS DEL ANÁLISIS ===\n"
-    msg_prom:    .string "Promedios:\nTemperatura Externa: %.1f°C\nTemperatura Interna: %.1f°C\nHumedad: %.1f%%\nNivel de Agua: %.1f%%\n\n"
     msg_export:  .string "\nResultados exportados a 'resultados.txt'\n"
     msg_invalid: .string "\nOpción inválida. Intente de nuevo.\n"
+
 .text
 .global _start
 _start:
@@ -126,7 +126,7 @@ leer_csv:
     b.lt error_lectura
 
     // Si se abrió correctamente, crear archivo de salida
-    mov x4, x0                // Guardar file descriptor
+    mov x4, x0                // Guardar file descriptor del CSV
     
     // Crear archivo de resultado
     mov x0, #-100              // AT_FDCWD
@@ -136,12 +136,17 @@ leer_csv:
     mov x8, #56               // syscall openat
     svc 0
 
-    // Escribir mensaje de éxito
+    // Escribir mensaje de éxito al archivo
     mov x1, x0                // File descriptor para escribir
     mov x0, x1
     ldr x1, =output_msg
     ldr x2, =output_len
     mov x8, #64               // syscall write
+    svc 0
+
+    // Cerrar archivo CSV
+    mov x0, x4
+    mov x8, #57               // syscall close
     svc 0
 
     ldp x29, x30, [sp], 16
@@ -157,4 +162,3 @@ error_lectura:
     
     ldp x29, x30, [sp], 16
     ret
-    
