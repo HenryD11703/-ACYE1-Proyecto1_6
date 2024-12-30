@@ -34,18 +34,18 @@ const MenuFase2 = () => {
                         <img src={humedadSuelo} alt="Humedad del Suelo" />
                         <p>Humedad del Suelo</p>
                     </Link>
-                    {/* <Link to="#" className="menu-item" onClick={() => mostrarGrafica('humedadSueloTiempo')}>
+                    <Link to="#" className="menu-item" onClick={() => mostrarGrafica('humedadSueloTiempo')}>
                         <img src={humedadSuelo} alt="Humedad del Suelo Por tiempo" />
                         <p>Humedad del Suelo por Tiempo </p>
-                    </Link> */}
+                    </Link>
                     <Link to="#" className="menu-item" onClick={() => mostrarGrafica('nivelAgua')}>
                         <img src={nivelAgua} alt="Nivel del Tanque de Agua" />
                         <p>Nivel del Tanque de Agua</p>
                     </Link>
-                    {/* <Link to="#" className="menu-item" onClick={() => mostrarGrafica('nivelAguaTiempo')}>
+                    <Link to="#" className="menu-item" onClick={() => mostrarGrafica('nivelAguaTiempo')}>
                         <img src={nivelAgua} alt="Nivel del Tanque de Agua Por Tiempo" />
                         <p>Nivel del Tanque de Agua por Tiempo</p>
-                    </Link> */}
+                    </Link>
                     <Link to="#" className="menu-item" onClick={() => mostrarGrafica('periodoActivacionAgua')}>
                         <img src={periodoAgua} alt="Período de activación de la bomba de agua" />
                         <p>Activación bomba de agua</p>
