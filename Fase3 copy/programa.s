@@ -258,8 +258,8 @@ write_to_file:
     // Crear archivo de salida
     mov x0, #-100         // AT_FDCWD
     adr x1, outfile
-    mov x2, #O_CREAT | O_RDWR         // permisos
-    mov x3, #FILE_PERMS          // O_CREAT | O_RDWR
+    mov x2, #0644         // permisos
+    mov x3, #66          // O_CREAT | O_RDWR
     mov x8, #56           // openat
     svc #0
     
