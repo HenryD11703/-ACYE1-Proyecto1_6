@@ -138,7 +138,37 @@ imprimirIntegrantes:
     bl puts
     adr x0, str_carne1
     bl puts
-    // ... continuar con los demás integrantes
+    
+    adr x0, str_int2
+    bl puts
+    adr x0, str_carne2
+    bl puts
+    
+    adr x0, str_int3
+    bl puts
+    adr x0, str_carne3
+    bl puts
+
+    adr x0, str_int4
+    bl puts
+    adr x0, str_carne4
+    bl puts
+
+    adr x0, str_int5
+    bl puts
+    adr x0, str_carne5
+    bl puts
+
+    adr x0, str_int6
+    bl puts
+    adr x0, str_carne6
+    bl puts
+
+    adr x0, str_int7
+    bl puts
+    adr x0, str_carne7
+    bl puts
+
     adr x0, str_int8
     bl puts
     adr x0, str_carne8
