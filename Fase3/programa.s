@@ -6,34 +6,60 @@ resultados:
     .zero 1000
 
 .section .rodata
-str_menu:      .string "\n--- Menú Principal ---"
-str_op1:       .string "1. Imprimir el Nombre de los integrantes del grupo"
-str_op2:       .string "2. Realizar Análisis Estadístico" 
-str_op3:       .string "3. Exportar los resultados a Txt"
-str_op4:       .string "4. Salir"
-str_prompt:    .string "Seleccione una opción: "
-str_format:    .string "%d"
-str_exit:      .string "Saliendo del programa..."
-str_invalid:   .string "Opción inválida. Intente de nuevo."
+str_menu:     
+ .string "\n--- Menú Principal ---"
+str_op1:      
+ .string "1. Imprimir el Nombre de los integrantes del grupo"
+str_op2:     
+  .string "2. Realizar Análisis Estadístico" 
+str_op3:    
+   .string "3. Exportar los resultados a Txt"
+str_op4:       
+.string "4. Salir"
+str_prompt:    
+.string "Seleccione una opción: "
+str_format:   
+ .string "%d"
+str_exit:     
+ .string "Saliendo del programa..."
+str_invalid: 
+  .string "Opción inválida. Intente de nuevo."
 
 // Strings para integrantes
-str_team:      .string "\nIntegrantes del equipo:"
-str_int1:      .string "1. Henry David Quel Santos"
-str_carne1:    .string "Carné: 202004071\n"
-str_int2:      .string "2. Pablo Alejandro Marroquin Cutz"
-str_carne2:    .string "Carné: 202200214\n"
-str_int3:      .string "3. Eric David Rojas de León"
-str_carne3:    .string "Carné: 202200331\n"
-str_int4:      .string "4. David Isaac García Mejía"
-str_carne4:    .string "Carné: 202202077\n"
-str_int5:      .string "5. Jorge Alejandro De León Batres"
-str_carne5:    .string "Carné: 202111277\n"
-str_int6:      .string "6. Roberto Miguel Garcia Santizo"
-str_carne6:    .string "Carné: 202201724\n"
-str_int7:      .string "7. Jose Javier Bonilla Salazar"
-str_carne7:    .string "Carné: 202200035\n"
-str_int8:      .string "8. Gerardo Leonel Ortiz Tobar"
-str_carne8:    .string "Carné: 202200196\n"
+str_team:    
+  .string "\nIntegrantes del equipo:"
+str_int1:     
+ .string "1. Henry David Quel Santos"
+str_carne1:   
+ .string "Carné: 202004071\n"
+str_int2:     
+ .string "2. Pablo Alejandro Marroquin Cutz"
+str_carne2:   
+ .string "Carné: 202200214\n"
+str_int3:   
+   .string "3. Eric David Rojas de León"
+str_carne3:   
+ .string "Carné: 202200331\n"
+str_int4:   
+   .string "4. David Isaac García Mejía"
+str_carne4:  
+  .string "Carné: 202202077\n"
+str_int5:    
+  .string "5. Jorge Alejandro De León Batres"
+str_carne5:  
+  .string "Carné: 202111277\n"
+str_int6:   
+   .string "6. Roberto Miguel Garcia Santizo"
+str_carne6:  
+  .string "Carné: 202201724\n"
+str_int7:    
+  .string "7. Jose Javier Bonilla Salazar"
+str_carne7: 
+   .string "Carné: 202200035\n"
+str_int8:    
+  .string "8. Gerardo Leonel Ortiz Tobar"
+str_carne8:  
+  .string "Carné: 202200196\n"
 
 // Strings para archivos y análisis
 str_read:      .string "r"
@@ -48,6 +74,7 @@ str_statsfmt:  .string "Media Interna: %.2f\nMedia Externa: %.2f\nModa Interna: 
 str_exported:  .string "Resultados exportados a resultados.txt"
 
 .text
+
 .global main
 main:
     // Guardar registros
