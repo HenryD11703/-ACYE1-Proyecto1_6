@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from pymongo import MongoClient
 from datetime import datetime
@@ -6,6 +6,9 @@ import random
 import os
 import python_weather
 import asyncio
+import csv
+from io import StringIO, BytesIO
+import csv
 
 # Crear la aplicación Flask
 app = Flask(__name__)
@@ -26,7 +29,32 @@ async def getweather() -> None:
         
         # returns the current day's forecast temperature (int)
         return weather.temperature
-      
+
+# Ruta para guardar datos en MongoDB
+@app.route('/guardar_datos', methods=['POST'])
+def guardar_datos():
+    if request.is_json:
+        datos = request.get_json()
+        datos['timestamp'] = datetime.now()  # Agregar la hora actual
+        result = collection.insert_one(datos)   # Guardar en MongoDB
+        return jsonify({"message": "Datos guardados", "id": str(result.inserted_id)}), 201
+    else:
+        return jsonify({"error": "El formato no es JSON"}), 400
+
+@app.route('/obtener_todos_datos', methods=['GET'])
+def obtener_todos_datos():
+    try:
+        datos = list(collection.find({}))
+        
+        # Convertir ObjectId a string y formatear timestamp
+        for dato in datos:
+            dato['_id'] = str(dato['_id'])
+            if 'timestamp' in dato:
+                dato['timestamp'] = dato['timestamp'].isoformat()  # Convertir a formato ISO
+        
+        return jsonify(datos), 200
+    except Exception as e:
+        return jsonify({"error": "Ocurrió un error al obtener los datos", "detalles": str(e)}), 500
 
 # Ruta para obtener todos los datos
 @app.route('/obtener_datos', methods=['GET'])
@@ -39,23 +67,8 @@ def obtener_datos():
         datos['humedadSuelo'] = 80 # Húmedo
     else:
         datos['humedadSuelo'] = 20 # Seco
-    # ------------------ ESTO ES PARA PRUEBAS ------------------
-    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    # temperaturaExterna = asyncio.run(getweather())
-    # datos = {
-    #         "timestamp": datetime.now(),
-    #         "temperaturaInterna": random.randint(10,80) * 100,
-    #         "temperaturaExterna": temperaturaExterna,
-    #         "humedadSuelo": random.randint(0,1),
-    #         "nivel": random.random() * 10,
-    #         "periodoActivacionAgua": random.randint(0,1),
-    #         "periodoActivacionAire": random.randint(0,1)
-    #     }
-    # datos['temperaturaExterna'] = temperaturaExterna
-    # if (datos['humedadSuelo'] == 0 ):
-    #     datos['humedadSuelo'] = 80 # Húmedo
-    # else:
-    #     datos['humedadSuelo'] = 20 # Seco
+
+    print(datos)
     return jsonify(datos), 200
     
 @app.route('/ObtenerDatosPorFechas', methods=['POST'])
@@ -66,12 +79,12 @@ def getMedicionesPorFechas():
     fechaFin = data.get('fechaFinal')
     filtro = {}
 
-    # Convertir fechas a formato datetime
+    # Convertir fechas a formato datetime incluyendo la hora
     if fechaIni:
-        fechaIni = datetime.strptime(fechaIni, '%Y-%m-%d')
+        fechaIni = datetime.strptime(fechaIni, '%Y-%m-%dT%H:%M')
         filtro['timestamp'] = {'$gte': fechaIni}
     if fechaFin:
-        fechaFin = datetime.strptime(fechaFin, '%Y-%m-%d')
+        fechaFin = datetime.strptime(fechaFin, '%Y-%m-%dT%H:%M')
         if 'timestamp' in filtro:
             filtro['timestamp']['$lte'] = fechaFin
         else:
@@ -81,8 +94,39 @@ def getMedicionesPorFechas():
     datos = list(collection.find(filtro))
     for dato in datos:
         dato['_id'] = str(dato['_id'])  # Convertir ObjectId a string
+        # Asegurar que el timestamp se envíe en formato ISO
+        if 'timestamp' in dato:
+            dato['timestamp'] = dato['timestamp']
 
     return jsonify(datos), 200
+
+@app.route('/generar_csv', methods=['GET'])
+def generar_csv():
+    try:
+        datos = list(collection.find({}, {"_id": 0}))
+        
+        output_text = StringIO()
+        writer = csv.writer(output_text)
+
+        if datos:
+            encabezados = datos[0].keys()
+            writer.writerow(encabezados)
+
+            for dato in datos:
+                writer.writerow([str(dato.get(key, '')) for key in encabezados])
+
+        output = BytesIO(output_text.getvalue().encode('utf-8'))
+
+        output.seek(0)
+
+        return send_file(
+            output,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='datos.csv'
+        )
+    except Exception as e:
+        return jsonify({"error": "Ocurrió un error al generar el archivo CSV", "detalles": str(e)}), 500
 
 # Iniciar el servidor
 if __name__ == '__main__':
