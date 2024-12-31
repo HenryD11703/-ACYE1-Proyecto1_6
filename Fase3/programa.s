@@ -1,522 +1,931 @@
-.text
-.global resultados
-.bss
-.align 3
-resultados:
-    .zero 1000
+.data
+// Add these to your .data section
+menu_msg:    .string "\n=== MENU PRINCIPAL ===\n\n1. Mostrar integrantes\n2. Analisis estadistico\n3. Generar archivos TXT\n4. Salir\n\nIngrese su opcion: "
+menu_msg_len = . - menu_msg
 
-.section .rodata
-str_menu:     
- .string "\n--- Menú Principal ---"
-str_op1:      
- .string "1. Imprimir el Nombre de los integrantes del grupo"
-str_op2:     
-  .string "2. Realizar Análisis Estadístico" 
-str_op3:    
-   .string "3. Exportar los resultados a Txt"
-str_op4:       
-.string "4. Salir"
-str_prompt:    
-.string "Seleccione una opción: "
-str_format:   
- .string "%d"
-str_exit:     
- .string "Saliendo del programa..."
-str_invalid: 
-  .string "Opción inválida. Intente de nuevo."
+input_buffer: .skip 2      // Buffer para la entrada del usuario
+newline_str: .string "\n"
 
-// Strings para integrantes
-str_team:    
-  .string "\nIntegrantes del equipo:"
-str_int1:     
- .string "1. Henry David Quel Santos"
-str_carne1:   
- .string "Carné: 202004071\n"
-str_int2:     
- .string "2. Pablo Alejandro Marroquin Cutz"
-str_carne2:   
- .string "Carné: 202200214\n"
-str_int3:   
-   .string "3. Eric David Rojas de León"
-str_carne3:   
- .string "Carné: 202200331\n"
-str_int4:   
-   .string "4. David Isaac García Mejía"
-str_carne4:  
-  .string "Carné: 202202077\n"
-str_int5:    
-  .string "5. Jorge Alejandro De León Batres"
-str_carne5:  
-  .string "Carné: 202111277\n"
-str_int6:   
-   .string "6. Roberto Miguel Garcia Santizo"
-str_carne6:  
-  .string "Carné: 202201724\n"
-str_int7:    
-  .string "7. Jose Javier Bonilla Salazar"
-str_carne7: 
-   .string "Carné: 202200035\n"
-str_int8:    
-  .string "8. Gerardo Leonel Ortiz Tobar"
-str_carne8:  
-  .string "Carné: 202200196\n"
+// Add your nombres string here
+nombres:    .string "\nIntegrantes del grupo:\n\n1. Henry David Quel Santos - 202004071\n2. Pablo Alejandro Marroquin Cutz - 202200214\n3. Eric David Rojas de Leon - 202200331\n4. Jore Alejandro de Leon Batres - 202111277\n5. Roberto Miguel Garcia Santizo - 202201724\n6. Jose Javier Bonilla Salazar - 202200035\n7. Gerardo Leonel Ortiz Tobar - 202200196\n8. David Isaac García Mejía - 202202077\n\n"
+nombres_len = . - nombres
 
-// Strings para archivos y análisis
-str_read:      .string "r"
-str_write:     .string "w"
-str_datafile:  .string "datos.csv"
-str_resfile:   .string "resultados.txt"
-str_dataerr:   .string "No se pudo abrir el archivo de datos."
-str_reserr:    .string "No se pudo crear el archivo de resultados."
-str_csvfmt:    .string "%[^,],%f,%f,%[^,],%f,%[^,],%s"
-str_stats:     .string "\n--- Resultados Estadísticos ---"
-str_statsfmt:  .string "Media Interna: %.2f\nMedia Externa: %.2f\nModa Interna: %.2f\nModa Externa: %.2f\nMax Interna: %.2f\nMin Interna: %.2f\nMax Externa: %.2f\nMin Externa: %.2f\nRango Interna: %.2f\nRango Externa: %.2f\n"
-str_exported:  .string "Resultados exportados a resultados.txt"
 
-.text
-
-.global main
-main:
-    // Guardar registros
-    sub sp, sp, 6432
-    stp x29, x30, [sp]
-    mov x29, sp
+    // New constants and variables for median calculation
+    outfile_median: .asciz "medianas.txt"
     
-    // Inicializar variables
-    str wzr, [sp, 28]
-    add x1, sp, 28
-    add x0, sp, 32
-    bl cargarDatos
+    msg_med_temp_int: .asciz "Mediana Temperatura Interna: "
+    msg_med_temp_int_len = . - msg_med_temp_int
+    
+    msg_med_temp_ext: .asciz "Mediana Temperatura Externa: "
+    msg_med_temp_ext_len = . - msg_med_temp_ext
+    
+    msg_med_nivel: .asciz "Mediana Nivel de Agua: "
+    msg_med_nivel_len = . - msg_med_nivel
+    
+    // Buffers for sorted arrays (5 entries x 8 bytes each)
+    temp_interna_sorted: .skip 40
+    temp_externa_sorted: .skip 40
+    nivel_agua_sorted: .skip 40
+    
+    // Medianas
+    median_temp_int: .double 0.0
+    median_temp_ext: .double 0.0
+    median_nivel: .double 0.0
+    
+    // Buffers para strings de medianas
+    out_med_temp_int: .skip 32
+    out_med_temp_ext: .skip 32
+    out_med_nivel: .skip 32
+    
+    const_two: .double 2.0
+
+    // Constantes adicionales para double_to_string
+    const_zero: .double 0.0
+    const_hundred: .double 100.0
+    digit_table: .asciz "0123456789"
+    temp_buffer: .skip 32
+    decimal_point: .asciz "."
+
+    msg_temp_int: .asciz "Promedio Temperatura Interna: "
+    msg_temp_int_len = . - msg_temp_int
+
+
+    msg_temp_ext: .asciz "Promedio Temperatura Externa: "
+    msg_temp_ext_len = . - msg_temp_ext
+    
+    msg_nivel: .asciz "Promedio Nivel de Agua: "
+    msg_nivel_len = . - msg_nivel
+    
+    newline: .asciz "\n"
+    newline_len = . - newline
+
+    FILE_PERMS = 0644    // rw-r--r--
+    O_CREAT = 64         // Valor decimal para O_CREAT
+    O_RDWR = 2          // Valor decimal para O_RDWR
+
+    // Archivos
+    filename: .asciz "datos.csv"
+    outfile: .asciz "promedios.txt"
+    
+    // Buffers
+    buffer: .skip 2048
+    
+    // Arrays para datos (5 entradas x 8 bytes cada una)
+    temp_interna: .skip 40
+    temp_externa: .skip 40
+    nivel_agua: .skip 40
+    
+    // Promedios
+    avg_temp_int: .double 0.0
+    avg_temp_ext: .double 0.0
+    avg_nivel: .double 0.0
+    
+    // Constantes
+    const_ten: .double 10.0
+    const_point_one: .double 0.1
+    const_five: .double 5.0    // Para dividir por 5 (promedio)
+    
+    // Mensajes
+    msg_error: .asciz "Error al abrir archivo\n"
+    msg_success: .asciz "Datos leídos correctamente\n"
+    
+    // Formato para el archivo de salida
+    out_format: .ascii "Promedio Temperatura Interna: "
+    out_temp_int: .skip 32
+    out_newline1: .ascii "\nPromedio Temperatura Externa: "
+    out_temp_ext: .skip 32
+    out_newline2: .ascii "\nPromedio Nivel de Agua: "
+    out_nivel: .skip 32
+    out_newline3: .ascii "\n"
+    
+    // Variables temporales
+    .align 4
+    fd: .word 0
+    outfd: .word 0
+
+.text
+.global _start
+
+_start:
+    // Guardar registros
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
 menu_loop:
-    // Imprimir menú
-    adr x0, str_menu
-    bl puts
-    adr x0, str_op1
-    bl puts
-    adr x0, str_op2
-    bl puts
-    adr x0, str_op3
-    bl puts
-    adr x0, str_op4
-    bl puts
-    adr x0, str_prompt
+    // Mostrar menu
+    mov x0, #1              // stdout
+    adr x1, menu_msg        // mensaje del menu
+    mov x2, menu_msg_len    // longitud del mensaje
+    mov x8, #64             // syscall write
+    svc #0
 
-    // Leer opción
-    add x0, sp, 24
-    mov x1, x0
-    adr x0, str_format
+    // Leer opción del usuario
+    mov x0, #0              // stdin
+    adr x1, input_buffer    // buffer para entrada
+    mov x2, #2              // leer 2 bytes (1 para el número, 1 para newline)
+    mov x8, #63             // syscall read
+    svc #0
 
-    // Switch de opciones
-    ldr w0, [sp, 24]
-    cmp w0, 1
-    beq op_integrantes
-    cmp w0, 2
-    beq op_analisis
-    cmp w0, 3
-    beq op_exportar
-    cmp w0, 4
-    beq op_salir
-    b op_invalida
+    // Convertir ASCII a número
+    ldrb w0, [x1]
+    sub w0, w0, #'0'
 
-op_integrantes:
-    bl imprimirIntegrantes
-    b menu_continue
+    // Comparar opción
+    cmp w0, #1
+    b.eq show_names
+    cmp w0, #2
+    b.eq do_analysis
+    cmp w0, #3
+    b.eq generate_txt
+    cmp w0, #4
+    b.eq exit_program
 
-op_analisis:
-    ldr w1, [sp, 28]
-    add x0, sp, 32
-    bl realizarAnalisisEstadistico
-    b menu_continue
+    b menu_loop            // Si no es una opción válida, volver a mostrar menú
 
-op_exportar:
-    bl exportarResultadosATxt
-    b menu_continue
+show_names:
+    // Mostrar nombres de integrantes
+    mov x0, #1
+    adr x1, nombres
+    mov x2, nombres_len
+    mov x8, #64
+    svc #0
+    b menu_loop
 
-op_salir:
-    adr x0, str_exit
-    bl puts
-    b menu_continue
+generate_txt:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
-op_invalida:
-    adr x0, str_invalid
-    bl puts
+    bl write_to_file
+    bl write_medians_to_file
 
-menu_continue:
-    ldr w0, [sp, 24]
-    cmp w0, 4
-    bne menu_loop
+    ldp x29, x30, [sp], #16
+    b menu_loop
 
-    // Restaurar y salir
-    mov w0, 0
-    ldp x29, x30, [sp]
-    add sp, sp, 6432
-    ret
+exit_program:
+    mov x0, #0
+    mov x8, #93            // exit syscall
+    svc #0
 
+    // Abrir archivo
 
-imprimirIntegrantes:
+    
+// Función para calcular promedios
+calculate_averages:
     stp x29, x30, [sp, -16]!
     mov x29, sp
     
-    // Imprimir cada integrante
-    adr x0, str_team
-    bl puts
-    adr x0, str_int1
-    bl puts
-    adr x0, str_carne1
-    bl puts
+    // Inicializar sumatorias
+    fmov d3, xzr          // suma temp_interna
+    fmov d4, xzr          // suma temp_externa
+    fmov d5, xzr          // suma nivel_agua
     
-    adr x0, str_int2
-    bl puts
-    adr x0, str_carne2
-    bl puts
+    mov x0, #0            // contador
     
-    adr x0, str_int3
-    bl puts
-    adr x0, str_carne3
-    bl puts
-
-    adr x0, str_int4
-    bl puts
-    adr x0, str_carne4
-    bl puts
-
-    adr x0, str_int5
-    bl puts
-    adr x0, str_carne5
-    bl puts
-
-    adr x0, str_int6
-    bl puts
-    adr x0, str_carne6
-    bl puts
-
-    adr x0, str_int7
-    bl puts
-    adr x0, str_carne7
-    bl puts
-
-    adr x0, str_int8
-    bl puts
-    adr x0, str_carne8
-    bl puts
+sum_loop:
+    cmp x0, #5
+    b.ge end_sum
     
-    ldp x29, x30, [sp], 16
+    // Sumar temperatura interna
+    adr x1, temp_interna
+    ldr d1, [x1, x0, lsl #3]
+    fadd d3, d3, d1
+    
+    // Sumar temperatura externa
+    adr x1, temp_externa
+    ldr d1, [x1, x0, lsl #3]
+    fadd d4, d4, d1
+    
+    // Sumar nivel de agua
+    adr x1, nivel_agua
+    ldr d1, [x1, x0, lsl #3]
+    fadd d5, d5, d1
+    
+    add x0, x0, #1
+    b sum_loop
+    
+end_sum:
+    // Dividir por 5 para obtener promedios
+    adr x0, const_five
+    ldr d6, [x0]
+    
+    fdiv d3, d3, d6
+    fdiv d4, d4, d6
+    fdiv d5, d5, d6
+    
+    // Guardar promedios
+    adr x0, avg_temp_int
+    str d3, [x0]
+    adr x0, avg_temp_ext
+    str d4, [x0]
+    adr x0, avg_nivel
+    str d5, [x0]
+    
+    ldp x29, x30, [sp], #16
     ret
 
-cargarDatos:
-    sub sp, sp, 256
-    stp x29, x30, [sp, 16]
+// Función para convertir números a texto
+convert_to_text:
+    stp x29, x30, [sp, -16]!
     mov x29, sp
-    str x0, [sp, 40]      // buffer
-    str x1, [sp, 32]      // contador
-
-    ldr x0, [sp, 32]
-    ldr     w0, [x0]
-    sxtw    x0, w0
-    lsl     x0, x0, 6
-    ldr     x1, [sp, 40]
-    add     x0, x1, x0
-    mov     x9, x0
-    ldr     x0, [sp, 32]
-    ldr     w0, [x0]
-    sxtw    x0, w0
-    lsl     x0, x0, 6
-    ldr     x1, [sp, 40]
-    add     x0, x1, x0
-    add     x2, x0, 20
-    ldr     x0, [sp, 32]
-    ldr     w0, [x0]
-    sxtw    x0, w0
-    lsl     x0, x0, 6
-    ldr     x1, [sp, 40]
-    add     x0, x1, x0
-    add     x3, x0, 24
-    ldr     x0, [sp, 32]
-    ldr     w0, [x0]
-    sxtw    x0, w0
-    lsl     x0, x0, 6
-    ldr     x1, [sp, 40]
-    add     x0, x1, x0
-    add     x4, x0, 28
-    ldr     x0, [sp, 32]
-    ldr     w0, [x0]
-    sxtw    x0, w0
-    lsl     x0, x0, 6
-    ldr     x1, [sp, 40]
-    add     x0, x1, x0
-    add     x5, x0, 40
-    ldr     x0, [sp, 32]
-    ldr     w0, [x0]
-    sxtw    x0, w0
-    lsl     x0, x0, 6
-    ldr     x1, [sp, 40]
-    add     x0, x1, x0
-    add     x6, x0, 44
-    ldr     x0, [sp, 32]
-    ldr     w0, [x0]
-    sxtw    x0, w0
-    lsl     x0, x0, 6
-    ldr     x1, [sp, 40]
-    add     x0, x1, x0
-    add     x0, x0, 54
-    add     x8, sp, 48
-    str     x0, [sp]
-    mov     x7, x6
-    mov     x6, x5
-    mov     x5, x4
-    mov     x4, x3
-    mov     x3, x2
-    mov     x2, x9
-    // Abrir archivo
-    adr x0, str_datafile
-    adr x1, str_read
-    bl fopen
-    str x0, [sp, 248]     // file pointer
     
-    // Verificar apertura
-    cbnz x0, load_start
-    adr x0, str_dataerr
-    bl puts
-    mov w0, 1
-    bl exit
-
-load_start:
-    add x0, sp, 48        // buffer línea
-    mov w1, 200           // tamaño máximo
-    ldr x2, [sp, 248]     // file pointer
-    bl fgets
-
-load_loop:
-    cbz x0, load_end      // si fgets retorna 0, fin archivo
+    // Convertir temperatura interna
+    adr x0, avg_temp_int
+    ldr d0, [x0]
+    adr x0, out_temp_int
+    bl double_to_string
     
-    // Procesar línea
-    ldr x0, [sp, 32]
-    ldr w0, [x0]
-    // ... procesar datos CSV
+    // Convertir temperatura externa
+    adr x0, avg_temp_ext
+    ldr d0, [x0]
+    adr x0, out_temp_ext
+    bl double_to_string
     
-    // Siguiente línea
-    add x0, sp, 48
-    mov w1, 200
-    ldr x2, [sp, 248]
-    bl fgets
-    b load_loop
-
-load_end:
-    ldr x0, [sp, 248]
-    bl fclose
-    ldp x29, x30, [sp, 16]
-    add sp, sp, 256
+    // Convertir nivel de agua
+    adr x0, avg_nivel
+    ldr d0, [x0]
+    adr x0, out_nivel
+    bl double_to_string
+    
+    ldp x29, x30, [sp], #16
     ret
 
-calcularMedia:
-    sub sp, sp, 32
-    str x0, [sp, 8]       // array
-    str w1, [sp, 4]       // tamaño
-    
-    // Inicializar suma
-    str wzr, [sp, 28]
-    mov w4, 0             // contador
-    
-media_loop:
-    cmp w4, w1
-    bge media_end
-    
-    // Sumar elemento
-    lsl x3, x4, 2        // índice * 4
-    ldr x2, [sp, 8]
-    add x2, x2, x3
-    ldr s0, [x2]
-    ldr s1, [sp, 28]
-    fadd s0, s1, s0
-    str s0, [sp, 28]
-    
-    add w4, w4, 1
-    b media_loop
-
-media_end:
-    // Calcular promedio
-    ldr s0, [sp, 4]
-    scvtf s0, s0
-    ldr s1, [sp, 28]
-    fdiv s0, s1, s0
-    
-    add sp, sp, 32
-    ret
-
-encontrarModa:
-    sub sp, sp, 48
-    str x0, [sp, 8]      // array
-    str w1, [sp, 4]      // tamaño
-    
-    // Inicializar variables
-    str wzr, [sp, 44]    // max_freq
-    ldr x0, [sp, 8]
-    ldr s0, [x0]
-    str s0, [sp, 40]     // moda
-    
-    mov w4, 0            // i
-moda_loop_outer:
-    cmp w4, w1
-    bge moda_end
-    
-    // Contar frecuencia
-    str wzr, [sp, 32]    // freq
-    mov w5, 0            // j
-    
-moda_loop_inner:
-    cmp w5, w1
-    bge moda_check
-    
-    // Comparar elementos
-    lsl x2, w5, 2
-    ldr x3, [sp, 8]
-    add x2, x3, x2
-    ldr s0, [x2]
-    
-    lsl x2, w4, 2
-    add x2, x3, x2
-    ldr s1, [x2]
-    
-    fcmp s0, s1
-    bne moda_next
-    
-    ldr w2, [sp, 32]
-    add w2, w2, 1
-    str w2, [sp, 32]
-    
-moda_next:
-    add w5, w5, 1
-    b moda_loop_inner
-
-moda_check:
-    ldr w2, [sp, 32]
-    ldr w3, [sp, 44]
-    cmp w2, w3
-    ble moda_continue
-    
-    // Actualizar moda
-    str w2, [sp, 44]
-    lsl x2, w4, 2
-    ldr x3, [sp, 8]
-    add x2, x3, x2
-    ldr s0, [x2]
-    str s0, [sp, 40]
-    
-moda_continue:
-    add w4, w4, 1
-    b moda_loop_outer
-
-moda_end:
-    ldr s0, [sp, 40]
-    add sp, sp, 48
-    ret
-
-encontrarMaximo:
-    sub sp, sp, 32
-    str x0, [sp, 8]      // array
-    str w1, [sp, 4]      // tamaño
-    
-    // Inicializar con primer elemento
-    ldr x0, [sp, 8]
-    ldr s0, [x0]
-    str s0, [sp, 28]     // max
-    
-    mov w4, 1            // i = 1
-max_loop:
-    cmp w4, w1
-    bge max_end
-    
-    // Comparar con máximo actual
-    lsl x2, w4, 2
-    ldr x3, [sp, 8]
-    add x2, x3, x2
-    ldr s0, [x2]
-    ldr s1, [sp, 28]
-    fcmp s1, s0
-    bgt max_continue
-    
-    // Actualizar máximo
-    str s0, [sp, 28]
-    
-max_continue:
-    add w4, w4, 1
-    b max_loop
-
-max_end:
-    ldr s0, [sp, 28]
-    add sp, sp, 32
-    ret
-
-encontrarMinimo:
-    // Similar a encontrarMaximo pero con comparación invertida
-    sub sp, sp, 32
-    str x0, [sp, 8]
-    str w1, [sp, 4]
-    
-    ldr x0, [sp, 8]
-    ldr s0, [x0]
-    str s0, [sp, 28]
-    
-    mov w4, 1
-min_loop:
-    cmp w4, w1
-    bge min_end
-    
-    lsl x2, w4, 2
-    ldr x3, [sp, 8]
-    add x2, x3, x2
-    ldr s0, [x2]
-    ldr s1, [sp, 28]
-    fcmp s1, s0
-    blt min_continue
-    
-    str s0, [sp, 28]
-    
-min_continue:
-    add w4, w4, 1
-    b min_loop
-
-min_end:
-    ldr s0, [sp, 28]
-    add sp, sp, 32
-    ret
-
-exportarResultadosATxt:
+// Función para escribir a archivo
+write_to_file:
     stp x29, x30, [sp, -32]!
+    stp x19, x20, [sp, #16]
     mov x29, sp
     
-    // Abrir archivo
-    adr x0, str_resfile
-    adr x1, str_write
-    bl fopen
-    str x0, [sp, 24]
+    // Crear archivo de salida
+    mov x0, #-100
+    adr x1, outfile
+    mov x2, #O_CREAT | O_RDWR
+    mov x3, #FILE_PERMS
+    mov x8, #56
+    svc #0
     
-    // Verificar apertura
-    cbnz x0, export_start
-    adr x0, str_reserr
-    bl puts
-    b export_end
+    cmp x0, #0
+    b.lt write_error
     
-export_start:
-    // Escribir encabezado
-    ldr x3, [sp, 24]
-    adr x0, str_stats
-    bl fputs
+    mov x19, x0           // Guardar fd
+
+    // Truncar el archivo a longitud 0
+    mov x0, x19
+    mov x1, #0
+    mov x2, #0
+    mov x8, #46           // ftruncate
+    svc #0
     
-    // Escribir resultados
-    ldr x1, [sp, 24]
-    adr x0, resultados
-    bl fputs
+    // Escribir temperatura interna
+    mov x0, x19
+    adr x1, msg_temp_int
+    mov x2, msg_temp_int_len
+    mov x8, #64           // write
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_temp_int
+    mov x2, #32           // longitud máxima
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Escribir temperatura externa
+    mov x0, x19
+    adr x1, msg_temp_ext
+    mov x2, msg_temp_ext_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Escribir nivel de agua
+    mov x0, x19
+    adr x1, msg_nivel
+    mov x2, msg_nivel_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
     
     // Cerrar archivo
-    ldr x0, [sp, 24]
-    bl fclose
+    mov x8, #57
+    mov x0, x19
+    svc #0
     
-    // Mensaje éxito
-    adr x0, str_exported
-    bl puts
+    mov x0, #0
+    b write_done
+
+write_error:
+    mov x0, #1
+
+write_done:
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #32
+    ret
+// Función auxiliar para convertir double a string
+double_to_string:
+    stp x29, x30, [sp, -64]!
+    mov x29, sp
+    stp x19, x20, [sp, #16]
+    stp x21, x22, [sp, #32]
+    stp d8, d9, [sp, #48]
     
-export_end:
-    ldp x29, x30, [sp], 32
-    re
+    mov x19, x0              // Guardar puntero al buffer destino
+    fmov d8, d0              // Guardar número original
+    
+    // Verificar si el número es negativo
+    adr x0, const_zero
+    ldr d1, [x0]
+    fcmp d8, d1
+    b.ge positive_number
+    
+    // Si es negativo, escribir '-' y hacer el número positivo
+    mov w0, #'-'
+    strb w0, [x19], #1
+    fneg d8, d8
+    
+positive_number:
+    // Multiplicar por 100 para manejar 2 decimales
+    adr x0, const_hundred
+    ldr d1, [x0]
+    fmul d9, d8, d1
+    
+    // Convertir a entero
+    fcvtzs x20, d9          // x20 contiene el número * 100
+    
+    // Preparar para la conversión
+    mov x21, x19            // Usar directamente el buffer de salida
+    mov x22, #0             // Contador de dígitos
+    
+    // Procesar los dos decimales primero
+    mov x1, #10
+    udiv x2, x20, x1
+    msub x3, x2, x1, x20
+    add w3, w3, #'0'
+    strb w3, [x21, x22]
+    add x22, x22, #1
+    
+    mov x20, x2
+    udiv x2, x20, x1
+    msub x3, x2, x1, x20
+    add w3, w3, #'0'
+    strb w3, [x21, x22]
+    add x22, x22, #1
+    
+    // Agregar punto decimal
+    mov w0, #'.'
+    strb w0, [x21, x22]
+    add x22, x22, #1
+    
+    mov x20, x2
+    
+    
+    // Procesar parte entera
+process_integer:
+    cbz x20, check_zero
+    mov x1, #10
+    udiv x2, x20, x1
+    msub x3, x2, x1, x20
+    add w3, w3, #'0'
+    strb w3, [x21, x22]
+    add x22, x22, #1
+    mov x20, x2
+    b process_integer
+
+check_zero:
+    cmp x22, #3             // Solo punto y decimales
+    b.ne reverse_string
+    mov w0, #'0'
+    strb w0, [x21, x22]
+    add x22, x22, #1
+
+reverse_string:
+    // Revertir los caracteres
+    mov x0, x19             // Inicio
+    sub x1, x21, #1         // Fin
+    add x1, x1, x22
+
+reverse_loop:
+    cmp x0, x1
+    b.ge done_reverse
+    ldrb w2, [x0]
+    ldrb w3, [x1]
+    strb w2, [x1]
+    strb w3, [x0]
+    add x0, x0, #1
+    sub x1, x1, #1
+    b reverse_loop
+    
+done_reverse:
+    // Agregar terminador nulo
+    add x0, x19, x22
+    mov w1, #0
+    strb w1, [x0]
+    
+    mov x0, x22             // Devolver longitud
+    
+    ldp d8, d9, [sp, #48]
+    ldp x21, x22, [sp, #32]
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #64
+    ret
+    
+end_conversion:
+    // Si no procesamos ningún dígito entero, poner un 0
+    cmp x21, x22
+    b.eq write_zero
+    
+copy_to_output:
+    // Copiar los dígitos al buffer final en orden inverso
+    mov x0, x19             // Destino
+    sub x21, x21, #1        // Último dígito escrito
+
+copy_loop:
+    cmp x21, x22
+    b.lt done_copy
+    ldrb w1, [x21], #-1
+    strb w1, [x0], #1
+    b copy_loop
+    
+write_zero:
+    mov w0, #'0'
+    strb w0, [x19], #1
+    
+done_copy:
+    // Terminar string con null
+    mov w0, #0
+    strb w0, [x19]
+    
+    // Calcular y devolver la longitud
+    sub x0, x19, x20        // Longitud = posición final - posición inicial
+    
+    ldp d8, d9, [sp, #48]
+    ldp x21, x22, [sp, #32]
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #64
+    ret
+
+
+exit:
+    ldp x29, x30, [sp], #16
+    mov x8, #93            // exit
+    svc #0
+
+// Función para leer un número y convertirlo a double
+read_number:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Inicializar resultado
+    fmov d0, xzr
+    
+    // Leer dígitos antes del punto
+read_digits:
+    ldrb w0, [x22], #1
+    cmp w0, #'.'
+    b.eq read_decimal
+    cmp w0, #','
+    b.eq done_reading
+    cmp w0, #'\n'
+    b.eq done_reading
+    
+    sub w0, w0, #'0'
+    scvtf d1, w0
+    
+    adr x0, const_ten
+    ldr d2, [x0]
+    fmul d0, d0, d2
+    fadd d0, d0, d1
+    b read_digits
+    
+read_decimal:
+    adr x0, const_point_one
+    ldr d2, [x0]           // d2 = 0.1
+    
+read_decimal_digits:
+    ldrb w0, [x22], #1
+    cmp w0, #','
+    b.eq done_reading
+    cmp w0, #'\n'
+    b.eq done_reading
+    
+    sub w0, w0, #'0'
+    scvtf d1, w0
+    fmul d1, d1, d2
+    fadd d0, d0, d1
+    fmul d2, d2, d2       // siguiente posición decimal
+    b read_decimal_digits
+    
+done_reading:
+    ldp x29, x30, [sp], #16
+    ret
+    
+sort_array:
+    // x0 = dirección del array a ordenar
+    // x1 = número de elementos (5 en nuestro caso)
+    stp x29, x30, [sp, -48]!
+    stp x19, x20, [sp, #16]
+    stp x21, x22, [sp, #32]
+    
+    mov x19, x0          // Guardar dirección base
+    sub x20, x1, #1      // n-1 para el bucle externo
+    
+outer_loop:
+    mov x21, xzr        // i = 0
+    
+inner_loop:
+    cmp x21, x20
+    b.ge outer_loop_end
+    
+    // Cargar elementos adyacentes
+    lsl x22, x21, #3
+    add x22, x19, x22
+    ldr d0, [x22]
+    ldr d1, [x22, #8]
+    
+    // Comparar
+    fcmp d0, d1
+    b.le no_swap
+    
+    // Intercambiar si d0 > d1
+    str d1, [x22]
+    str d0, [x22, #8]
+    
+no_swap:
+    add x21, x21, #1
+    b inner_loop
+    
+outer_loop_end:
+    subs x20, x20, #1
+    b.ne outer_loop
+    
+    ldp x21, x22, [sp, #32]
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #48
+    ret
+
+calculate_medians:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Copiar temp_interna
+    mov x4, #40          // 5 elementos * 8 bytes
+    adr x0, temp_interna_sorted
+    adr x1, temp_interna
+1:  // Etiqueta local
+    ldr d0, [x1], #8
+    str d0, [x0], #8
+    subs x4, x4, #8
+    b.ne 1b
+    
+    // Copiar temp_externa
+    mov x4, #40
+    adr x0, temp_externa_sorted
+    adr x1, temp_externa
+2:  // Etiqueta local
+    ldr d0, [x1], #8
+    str d0, [x0], #8
+    subs x4, x4, #8
+    b.ne 2b
+    
+    // Copiar nivel_agua
+    mov x4, #40
+    adr x0, nivel_agua_sorted
+    adr x1, nivel_agua
+3:  // Etiqueta local
+    ldr d0, [x1], #8
+    str d0, [x0], #8
+    subs x4, x4, #8
+    b.ne 3b
+    
+    // Ordenar cada array
+    adr x0, temp_interna_sorted
+    mov x1, #5
+    bl sort_array
+    
+    adr x0, temp_externa_sorted
+    mov x1, #5
+    bl sort_array
+    
+    adr x0, nivel_agua_sorted
+    mov x1, #5
+    bl sort_array
+    
+    // Calcular medianas (elemento central para n=5)
+    adr x0, temp_interna_sorted
+    ldr d0, [x0, #16]    // Índice 2 (tercer elemento)
+    adr x0, median_temp_int
+    str d0, [x0]
+    
+    adr x0, temp_externa_sorted
+    ldr d0, [x0, #16]
+    adr x0, median_temp_ext
+    str d0, [x0]
+    
+    adr x0, nivel_agua_sorted
+    ldr d0, [x0, #16]
+    adr x0, median_nivel
+    str d0, [x0]
+    
+    ldp x29, x30, [sp], #16
+    ret
+    
+copy_temp_int:
+    ldr d0, [x1], #8
+    str d0, [x0], #8
+    subs x4, x4, #8
+    b.ne copy_temp_int
+    
+    // Ordenar cada array
+    adr x0, temp_interna_sorted
+    mov x1, #5
+    bl sort_array
+    
+    adr x0, temp_externa_sorted
+    mov x1, #5
+    bl sort_array
+    
+    adr x0, nivel_agua_sorted
+    mov x1, #5
+    bl sort_array
+    
+    // Calcular medianas (elemento central para n=5)
+    adr x0, temp_interna_sorted
+    ldr d0, [x0, #16]    // Índice 2 (tercer elemento)
+    adr x0, median_temp_int
+    str d0, [x0]
+    
+    adr x0, temp_externa_sorted
+    ldr d0, [x0, #16]
+    adr x0, median_temp_ext
+    str d0, [x0]
+    
+    adr x0, nivel_agua_sorted
+    ldr d0, [x0, #16]
+    adr x0, median_nivel
+    str d0, [x0]
+    
+    ldp x29, x30, [sp], #16
+    ret
+
+// Nueva función para escribir medianas a archivo
+write_medians_to_file:
+    stp x29, x30, [sp, -32]!
+    stp x19, x20, [sp, #16]
+    mov x29, sp
+    
+    // Crear archivo de medianas
+    mov x0, #-100
+    adr x1, outfile_median
+    mov x2, #O_CREAT | O_RDWR
+    mov x3, #FILE_PERMS
+    mov x8, #56
+    svc #0
+    
+    cmp x0, #0
+    b.lt write_median_error
+    
+    mov x19, x0           // Guardar fd
+    
+    // Truncar el archivo
+    mov x0, x19
+    mov x1, #0
+    mov x2, #0
+    mov x8, #46
+    svc #0
+    
+    // Escribir mediana temperatura interna
+    mov x0, x19
+    adr x1, msg_med_temp_int
+    mov x2, msg_med_temp_int_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_med_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Escribir mediana temperatura externa
+    mov x0, x19
+    adr x1, msg_med_temp_ext
+    mov x2, msg_med_temp_ext_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_med_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Escribir mediana nivel de agua
+    mov x0, x19
+    adr x1, msg_med_nivel
+    mov x2, msg_med_nivel_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_med_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Cerrar archivo
+    mov x8, #57
+    mov x0, x19
+    svc #0
+    
+    mov x0, #0
+    b write_median_done
+
+write_median_error:
+    mov x0, #1
+
+write_median_done:
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #32
+    ret
+
+convert_medians_to_text:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Convertir mediana temperatura interna
+    adr x0, median_temp_int
+    ldr d0, [x0]
+    adr x0, out_med_temp_int
+    bl double_to_string
+    
+    // Convertir mediana temperatura externa
+    adr x0, median_temp_ext
+    ldr d0, [x0]
+    adr x0, out_med_temp_ext
+    bl double_to_string
+    
+    // Convertir mediana nivel de agua
+    adr x0, median_nivel
+    ldr d0, [x0]
+    adr x0, out_med_nivel
+    bl double_to_string
+    
+    ldp x29, x30, [sp], #16
+    ret
+
+do_analysis:
+    // Guardar el registro de retorno
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+
+    // Abrir archivo
+    mov x0, #-100           // AT_FDCWD
+    adr x1, filename
+    mov x2, #0              // O_RDONLY
+    mov x8, #56             // openat
+    svc #0
+    
+    // Verificar error
+    cmp x0, #0
+    b.lt error_exit
+    
+    // Guardar file descriptor
+    adr x1, fd
+    str w0, [x1]
+    
+    // Leer archivo
+    mov x0, x0              // Usar x0 directamente
+    adr x1, buffer          // buffer
+    mov x2, #2048          // tamaño
+    mov x8, #63            // read
+    svc #0
+    
+    // Verificar error
+    cmp x0, #0
+    b.le error_exit
+    
+    // Inicializar punteros a arrays
+    adr x19, temp_interna
+    adr x20, temp_externa
+    adr x21, nivel_agua
+    
+    // Inicializar puntero al buffer
+    adr x22, buffer
+    mov x23, #0            // contador de líneas
+    
+    // Saltar primera línea (headers)
+skip_header:
+    ldrb w0, [x22], #1
+    cmp w0, #'\n'
+    b.ne skip_header
+    
+    // Procesar datos
+process_data:
+    cmp x23, #5            // máximo 5 líneas
+    b.ge done_processing
+    
+    // Saltar fecha y hora (buscar primera coma)
+skip_datetime:
+    ldrb w0, [x22], #1
+    cmp w0, #','
+    b.ne skip_datetime
+    
+    // Leer temperatura interna
+    bl read_number
+    str d0, [x19, x23, lsl #3]
+    
+    // Leer temperatura externa
+    bl read_number
+    str d0, [x20, x23, lsl #3]
+    
+    // Saltar "Estado del Suelo"
+skip_soil:
+    ldrb w0, [x22], #1
+    cmp w0, #','
+    b.ne skip_soil
+    
+    // Leer nivel de agua
+    bl read_number
+    str d0, [x21, x23, lsl #3]
+    
+    // Buscar fin de línea
+skip_rest:
+    ldrb w0, [x22], #1
+    cmp w0, #'\n'
+    b.ne skip_rest
+    
+    add x23, x23, #1
+    b process_data
+    
+done_processing:
+    // Calcular promedios y medianas
+    bl calculate_averages
+    bl calculate_medians
+    bl convert_to_text
+    bl convert_medians_to_text
+    
+    // Cerrar archivo de entrada
+    adr x1, fd
+    ldr w0, [x1]
+    mov x8, #57            // close
+    svc #0
+
+    // Restaurar registros y volver al menú
+    ldp x29, x30, [sp], #16
+    b menu_loop
+
+error_exit:
+    mov x0, #1
+    adr x1, msg_error
+    mov x2, #20
+    mov x8, #64            // write
+    svc #0
+    
+    // Si hay error, también volvemos al menú
+    ldp x29, x30, [sp], #16
+    b menu_loop

@@ -4,3 +4,4 @@ Fecha y Hora,Temperatura Interna (°C),Temperatura Externa (°C),Estado del Suel
 2024-01-01 10:00:00,30.0,28.0,Húmedo,6.5,Activado,Activado
 2024-01-01 11:00:00,32.0,29.0,Seco,5.9,Desactivado,Desactivado
 2024-01-01 12:00:00,33.0,30.0,Húmedo,5.2,Activado,Activado
+
