@@ -182,12 +182,19 @@ skip_rest:
 done_processing:
     // Calcular promedios
     bl calculate_averages
+
+    // Calcular medianas
+    bl calculate_medians
     
     // Convertir promedios a texto
     bl convert_to_text
+
+    // Convertir medianas a texto
+    bl convert_medians_to_text
     
     // Escribir resultados a archivo
     bl write_to_file
+    bl write_medians_to_file
     
     // Cerrar archivo de entrada
     adr x1, fd
@@ -582,3 +589,274 @@ done_reading:
     ldp x29, x30, [sp], #16
     ret
     
+sort_array:
+    // x0 = dirección del array a ordenar
+    // x1 = número de elementos (5 en nuestro caso)
+    stp x29, x30, [sp, -48]!
+    stp x19, x20, [sp, #16]
+    stp x21, x22, [sp, #32]
+    
+    mov x19, x0          // Guardar dirección base
+    sub x20, x1, #1      // n-1 para el bucle externo
+    
+outer_loop:
+    mov x21, xzr        // i = 0
+    
+inner_loop:
+    cmp x21, x20
+    b.ge outer_loop_end
+    
+    // Cargar elementos adyacentes
+    lsl x22, x21, #3
+    add x22, x19, x22
+    ldr d0, [x22]
+    ldr d1, [x22, #8]
+    
+    // Comparar
+    fcmp d0, d1
+    b.le no_swap
+    
+    // Intercambiar si d0 > d1
+    str d1, [x22]
+    str d0, [x22, #8]
+    
+no_swap:
+    add x21, x21, #1
+    b inner_loop
+    
+outer_loop_end:
+    subs x20, x20, #1
+    b.ne outer_loop
+    
+    ldp x21, x22, [sp, #32]
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #48
+    ret
+
+calculate_medians:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Copiar temp_interna
+    mov x4, #40          // 5 elementos * 8 bytes
+    adr x0, temp_interna_sorted
+    adr x1, temp_interna
+1:  // Etiqueta local
+    ldr d0, [x1], #8
+    str d0, [x0], #8
+    subs x4, x4, #8
+    b.ne 1b
+    
+    // Copiar temp_externa
+    mov x4, #40
+    adr x0, temp_externa_sorted
+    adr x1, temp_externa
+2:  // Etiqueta local
+    ldr d0, [x1], #8
+    str d0, [x0], #8
+    subs x4, x4, #8
+    b.ne 2b
+    
+    // Copiar nivel_agua
+    mov x4, #40
+    adr x0, nivel_agua_sorted
+    adr x1, nivel_agua
+3:  // Etiqueta local
+    ldr d0, [x1], #8
+    str d0, [x0], #8
+    subs x4, x4, #8
+    b.ne 3b
+    
+    // Ordenar cada array
+    adr x0, temp_interna_sorted
+    mov x1, #5
+    bl sort_array
+    
+    adr x0, temp_externa_sorted
+    mov x1, #5
+    bl sort_array
+    
+    adr x0, nivel_agua_sorted
+    mov x1, #5
+    bl sort_array
+    
+    // Calcular medianas (elemento central para n=5)
+    adr x0, temp_interna_sorted
+    ldr d0, [x0, #16]    // Índice 2 (tercer elemento)
+    adr x0, median_temp_int
+    str d0, [x0]
+    
+    adr x0, temp_externa_sorted
+    ldr d0, [x0, #16]
+    adr x0, median_temp_ext
+    str d0, [x0]
+    
+    adr x0, nivel_agua_sorted
+    ldr d0, [x0, #16]
+    adr x0, median_nivel
+    str d0, [x0]
+    
+    ldp x29, x30, [sp], #16
+    ret
+    
+copy_temp_int:
+    ldr d0, [x1], #8
+    str d0, [x0], #8
+    subs x4, x4, #8
+    b.ne copy_temp_int
+    
+    // Ordenar cada array
+    adr x0, temp_interna_sorted
+    mov x1, #5
+    bl sort_array
+    
+    adr x0, temp_externa_sorted
+    mov x1, #5
+    bl sort_array
+    
+    adr x0, nivel_agua_sorted
+    mov x1, #5
+    bl sort_array
+    
+    // Calcular medianas (elemento central para n=5)
+    adr x0, temp_interna_sorted
+    ldr d0, [x0, #16]    // Índice 2 (tercer elemento)
+    adr x0, median_temp_int
+    str d0, [x0]
+    
+    adr x0, temp_externa_sorted
+    ldr d0, [x0, #16]
+    adr x0, median_temp_ext
+    str d0, [x0]
+    
+    adr x0, nivel_agua_sorted
+    ldr d0, [x0, #16]
+    adr x0, median_nivel
+    str d0, [x0]
+    
+    ldp x29, x30, [sp], #16
+    ret
+
+// Nueva función para escribir medianas a archivo
+write_medians_to_file:
+    stp x29, x30, [sp, -32]!
+    stp x19, x20, [sp, #16]
+    mov x29, sp
+    
+    // Crear archivo de medianas
+    mov x0, #-100
+    adr x1, outfile_median
+    mov x2, #O_CREAT | O_RDWR
+    mov x3, #FILE_PERMS
+    mov x8, #56
+    svc #0
+    
+    cmp x0, #0
+    b.lt write_median_error
+    
+    mov x19, x0           // Guardar fd
+    
+    // Truncar el archivo
+    mov x0, x19
+    mov x1, #0
+    mov x2, #0
+    mov x8, #46
+    svc #0
+    
+    // Escribir mediana temperatura interna
+    mov x0, x19
+    adr x1, msg_med_temp_int
+    mov x2, msg_med_temp_int_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_med_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Escribir mediana temperatura externa
+    mov x0, x19
+    adr x1, msg_med_temp_ext
+    mov x2, msg_med_temp_ext_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_med_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Escribir mediana nivel de agua
+    mov x0, x19
+    adr x1, msg_med_nivel
+    mov x2, msg_med_nivel_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_med_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Cerrar archivo
+    mov x8, #57
+    mov x0, x19
+    svc #0
+    
+    mov x0, #0
+    b write_median_done
+
+write_median_error:
+    mov x0, #1
+
+write_median_done:
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #32
+    ret
+
+convert_medians_to_text:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Convertir mediana temperatura interna
+    adr x0, median_temp_int
+    ldr d0, [x0]
+    adr x0, out_med_temp_int
+    bl double_to_string
+    
+    // Convertir mediana temperatura externa
+    adr x0, median_temp_ext
+    ldr d0, [x0]
+    adr x0, out_med_temp_ext
+    bl double_to_string
+    
+    // Convertir mediana nivel de agua
+    adr x0, median_nivel
+    ldr d0, [x0]
+    adr x0, out_med_nivel
+    bl double_to_string
+    
+    ldp x29, x30, [sp], #16
+    ret
