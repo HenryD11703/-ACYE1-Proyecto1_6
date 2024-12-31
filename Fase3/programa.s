@@ -1,5 +1,17 @@
 .data
-// New constants and variables for median calculation
+// Add these to your .data section
+menu_msg:    .string "\n=== MENU PRINCIPAL ===\n\n1. Mostrar integrantes\n2. Analisis estadistico\n3. Generar archivos TXT\n4. Salir\n\nIngrese su opcion: "
+menu_msg_len = . - menu_msg
+
+input_buffer: .skip 2      // Buffer para la entrada del usuario
+newline_str: .string "\n"
+
+// Add your nombres string here
+nombres:    .string "\nIntegrantes del grupo:\n\n1. Henry David Quel Santos - 202004071\n2. Pablo Alejandro Marroquin Cutz - 202200214\n3. Eric David Rojas de Leon - 202200331\n4. Jore Alejandro de Leon Batres - 202111277\n5. Roberto Miguel Garcia Santizo - 202201724\n6. Jose Javier Bonilla Salazar - 202200035\n7. Gerardo Leonel Ortiz Tobar - 202200196\n8. David Isaac García Mejía - 202202077\n\n"
+nombres_len = . - nombres
+
+
+    // New constants and variables for median calculation
     outfile_median: .asciz "medianas.txt"
     
     msg_med_temp_int: .asciz "Mediana Temperatura Interna: "
@@ -100,111 +112,64 @@ _start:
     stp x29, x30, [sp, -16]!
     mov x29, sp
 
-    // Abrir archivo
-    mov x0, #-100           // AT_FDCWD
-    adr x1, filename
-    mov x2, #0              // O_RDONLY
-    mov x8, #56             // openat
+menu_loop:
+    // Mostrar menu
+    mov x0, #1              // stdout
+    adr x1, menu_msg        // mensaje del menu
+    mov x2, menu_msg_len    // longitud del mensaje
+    mov x8, #64             // syscall write
     svc #0
-    
-    // Verificar error
-    cmp x0, #0
-    b.lt error_exit
-    
-    // Guardar file descriptor
-    adr x1, fd
-    str w0, [x1]
-    
-    // Leer archivo
-    mov x0, x0              // Usar x0 directamente
-    adr x1, buffer          // buffer
-    mov x2, #2048          // tamaño
-    mov x8, #63            // read
+
+    // Leer opción del usuario
+    mov x0, #0              // stdin
+    adr x1, input_buffer    // buffer para entrada
+    mov x2, #2              // leer 2 bytes (1 para el número, 1 para newline)
+    mov x8, #63             // syscall read
     svc #0
-    
-    // Verificar error
-    cmp x0, #0
-    b.le error_exit
-    
-    // Inicializar punteros a arrays
-    adr x19, temp_interna
-    adr x20, temp_externa
-    adr x21, nivel_agua
-    
-    // Inicializar puntero al buffer
-    adr x22, buffer
-    mov x23, #0            // contador de líneas
-    
-    // Saltar primera línea (headers)
-skip_header:
-    ldrb w0, [x22], #1
-    cmp w0, #'\n'
-    b.ne skip_header
-    
-    // Procesar datos
-process_data:
-    cmp x23, #5            // máximo 5 líneas
-    b.ge done_processing
-    
-    // Saltar fecha y hora (buscar primera coma)
-skip_datetime:
-    ldrb w0, [x22], #1
-    cmp w0, #','
-    b.ne skip_datetime
-    
-    // Leer temperatura interna
-    bl read_number
-    str d0, [x19, x23, lsl #3]
-    
-    // Leer temperatura externa
-    bl read_number
-    str d0, [x20, x23, lsl #3]
-    
-    // Saltar "Estado del Suelo"
-skip_soil:
-    ldrb w0, [x22], #1
-    cmp w0, #','
-    b.ne skip_soil
-    
-    // Leer nivel de agua
-    bl read_number
-    str d0, [x21, x23, lsl #3]
-    
-    // Buscar fin de línea
-skip_rest:
-    ldrb w0, [x22], #1
-    cmp w0, #'\n'
-    b.ne skip_rest
-    
-    add x23, x23, #1
-    b process_data
-    
-done_processing:
-    // Calcular promedios
-    bl calculate_averages
 
-    // Calcular medianas
-    bl calculate_medians
-    
-    // Convertir promedios a texto
-    bl convert_to_text
+    // Convertir ASCII a número
+    ldrb w0, [x1]
+    sub w0, w0, #'0'
 
-    // Convertir medianas a texto
-    bl convert_medians_to_text
-    
-    // Escribir resultados a archivo
+    // Comparar opción
+    cmp w0, #1
+    b.eq show_names
+    cmp w0, #2
+    b.eq do_analysis
+    cmp w0, #3
+    b.eq generate_txt
+    cmp w0, #4
+    b.eq exit_program
+
+    b menu_loop            // Si no es una opción válida, volver a mostrar menú
+
+show_names:
+    // Mostrar nombres de integrantes
+    mov x0, #1
+    adr x1, nombres
+    mov x2, nombres_len
+    mov x8, #64
+    svc #0
+    b menu_loop
+
+generate_txt:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+
     bl write_to_file
     bl write_medians_to_file
-    
-    // Cerrar archivo de entrada
-    adr x1, fd
-    ldr w0, [x1]
-    mov x8, #57            // close
-    svc #0
-    
-    mov x0, #0
-    b exit
 
+    ldp x29, x30, [sp], #16
+    b menu_loop
+
+exit_program:
+    mov x0, #0
+    mov x8, #93            // exit syscall
+    svc #0
+
+    // Abrir archivo
+
+    
 // Función para calcular promedios
 calculate_averages:
     stp x29, x30, [sp, -16]!
@@ -526,14 +491,6 @@ done_copy:
     ldp x29, x30, [sp], #64
     ret
 
-error_exit:
-    mov x0, #1
-    adr x1, msg_error
-    mov x2, #20
-    mov x8, #64            // write
-    svc #0
-    
-    mov x0, #1
 
 exit:
     ldp x29, x30, [sp], #16
@@ -860,3 +817,115 @@ convert_medians_to_text:
     
     ldp x29, x30, [sp], #16
     ret
+
+do_analysis:
+    // Guardar el registro de retorno
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+
+    // Abrir archivo
+    mov x0, #-100           // AT_FDCWD
+    adr x1, filename
+    mov x2, #0              // O_RDONLY
+    mov x8, #56             // openat
+    svc #0
+    
+    // Verificar error
+    cmp x0, #0
+    b.lt error_exit
+    
+    // Guardar file descriptor
+    adr x1, fd
+    str w0, [x1]
+    
+    // Leer archivo
+    mov x0, x0              // Usar x0 directamente
+    adr x1, buffer          // buffer
+    mov x2, #2048          // tamaño
+    mov x8, #63            // read
+    svc #0
+    
+    // Verificar error
+    cmp x0, #0
+    b.le error_exit
+    
+    // Inicializar punteros a arrays
+    adr x19, temp_interna
+    adr x20, temp_externa
+    adr x21, nivel_agua
+    
+    // Inicializar puntero al buffer
+    adr x22, buffer
+    mov x23, #0            // contador de líneas
+    
+    // Saltar primera línea (headers)
+skip_header:
+    ldrb w0, [x22], #1
+    cmp w0, #'\n'
+    b.ne skip_header
+    
+    // Procesar datos
+process_data:
+    cmp x23, #5            // máximo 5 líneas
+    b.ge done_processing
+    
+    // Saltar fecha y hora (buscar primera coma)
+skip_datetime:
+    ldrb w0, [x22], #1
+    cmp w0, #','
+    b.ne skip_datetime
+    
+    // Leer temperatura interna
+    bl read_number
+    str d0, [x19, x23, lsl #3]
+    
+    // Leer temperatura externa
+    bl read_number
+    str d0, [x20, x23, lsl #3]
+    
+    // Saltar "Estado del Suelo"
+skip_soil:
+    ldrb w0, [x22], #1
+    cmp w0, #','
+    b.ne skip_soil
+    
+    // Leer nivel de agua
+    bl read_number
+    str d0, [x21, x23, lsl #3]
+    
+    // Buscar fin de línea
+skip_rest:
+    ldrb w0, [x22], #1
+    cmp w0, #'\n'
+    b.ne skip_rest
+    
+    add x23, x23, #1
+    b process_data
+    
+done_processing:
+    // Calcular promedios y medianas
+    bl calculate_averages
+    bl calculate_medians
+    bl convert_to_text
+    bl convert_medians_to_text
+    
+    // Cerrar archivo de entrada
+    adr x1, fd
+    ldr w0, [x1]
+    mov x8, #57            // close
+    svc #0
+
+    // Restaurar registros y volver al menú
+    ldp x29, x30, [sp], #16
+    b menu_loop
+
+error_exit:
+    mov x0, #1
+    adr x1, msg_error
+    mov x2, #20
+    mov x8, #64            // write
+    svc #0
+    
+    // Si hay error, también volvemos al menú
+    ldp x29, x30, [sp], #16
+    b menu_loop
