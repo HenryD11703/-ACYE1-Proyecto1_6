@@ -1,5 +1,5 @@
 Fecha y Hora,Temperatura Interna (°C),Temperatura Externa (°C),Estado del Suelo,Nivel de Agua,Sistema de Riego,Sistema de Ventilación
-2024-01-01 08:00:00,25.0,22.0,Húmedo,8.5,Activado,Desactivado
+2024-01-01 08:00:00,225.0,22.0,Húmedo,8.5,Activado,Desactivado
 2024-01-01 09:00:00,27.0,24.0,Seco,7.8,Desactivado,Activado
 2024-01-01 10:00:00,30.0,28.0,Húmedo,6.5,Activado,Activado
 2024-01-01 11:00:00,32.0,29.0,Seco,5.9,Desactivado,Desactivado

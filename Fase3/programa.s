@@ -1,5 +1,6 @@
 .data
 
+
     // Constantes adicionales para double_to_string
     const_zero: .double 0.0
     const_hundred: .double 100.0
@@ -9,6 +10,7 @@
 
     msg_temp_int: .asciz "Promedio Temperatura Interna: "
     msg_temp_int_len = . - msg_temp_int
+
 
     msg_temp_ext: .asciz "Promedio Temperatura Externa: "
     msg_temp_ext_len = . - msg_temp_ext
@@ -51,11 +53,11 @@
     
     // Formato para el archivo de salida
     out_format: .ascii "Promedio Temperatura Interna: "
-    out_temp_int: .skip 20
+    out_temp_int: .skip 32
     out_newline1: .ascii "\nPromedio Temperatura Externa: "
-    out_temp_ext: .skip 20
+    out_temp_ext: .skip 32
     out_newline2: .ascii "\nPromedio Nivel de Agua: "
-    out_nivel: .skip 20
+    out_nivel: .skip 32
     out_newline3: .ascii "\n"
     
     // Variables temporales
@@ -256,100 +258,104 @@ write_to_file:
     mov x29, sp
     
     // Crear archivo de salida
-    mov x0, #-100         // AT_FDCWD
+    mov x0, #-100
     adr x1, outfile
-    mov x2, #O_CREAT | O_RDWR         // permisos
-    mov x3, #FILE_PERMS          // O_CREAT | O_RDWR
-    mov x8, #56           // openat
+    mov x2, #O_CREAT | O_RDWR
+    mov x3, #FILE_PERMS
+    mov x8, #56
     svc #0
     
-    // Verificar error
     cmp x0, #0
     b.lt write_error
     
-    // Guardar descriptor
     mov x19, x0           // Guardar fd
+
+    // Truncar el archivo a longitud 0
+    mov x0, x19
+    mov x1, #0
+    mov x2, #0
+    mov x8, #46           // ftruncate
+    svc #0
     
     // Escribir temperatura interna
     mov x0, x19
     adr x1, msg_temp_int
-    mov x2, #msg_temp_int_len
-    mov x8, #64
+    mov x2, msg_temp_int_len
+    mov x8, #64           // write
     svc #0
     
     mov x0, x19
     adr x1, out_temp_int
-    mov x2, #20           // longitud máxima del número convertido
+    mov x2, #32           // longitud máxima
     mov x8, #64
     svc #0
     
     mov x0, x19
     adr x1, newline
-    mov x2, #newline_len
+    mov x2, #1
     mov x8, #64
     svc #0
     
     // Escribir temperatura externa
     mov x0, x19
     adr x1, msg_temp_ext
-    mov x2, #msg_temp_ext_len
+    mov x2, msg_temp_ext_len
     mov x8, #64
     svc #0
     
     mov x0, x19
     adr x1, out_temp_ext
-    mov x2, #20
+    mov x2, #32
     mov x8, #64
     svc #0
     
     mov x0, x19
     adr x1, newline
-    mov x2, #newline_len
+    mov x2, #1
     mov x8, #64
     svc #0
     
     // Escribir nivel de agua
     mov x0, x19
     adr x1, msg_nivel
-    mov x2, #msg_nivel_len
+    mov x2, msg_nivel_len
     mov x8, #64
     svc #0
     
     mov x0, x19
     adr x1, out_nivel
-    mov x2, #20
+    mov x2, #32
     mov x8, #64
     svc #0
     
     mov x0, x19
     adr x1, newline
-    mov x2, #newline_len
+    mov x2, #1
     mov x8, #64
     svc #0
     
     // Cerrar archivo
-    mov x8, #57           // close
+    mov x8, #57
     mov x0, x19
     svc #0
     
-    mov x0, #0           // return success
+    mov x0, #0
     b write_done
 
 write_error:
-    mov x0, #1           // return error
+    mov x0, #1
 
 write_done:
     ldp x19, x20, [sp, #16]
     ldp x29, x30, [sp], #32
     ret
-
 // Función auxiliar para convertir double a string
 double_to_string:
     stp x29, x30, [sp, -64]!
     mov x29, sp
-    stp x19, x20, [sp, #16]  // Guardar registros que usaremos
+    stp x19, x20, [sp, #16]
     stp x21, x22, [sp, #32]
-    stp d8, d9, [sp, #48]    // Guardar registros de punto flotante
+    stp d8, d9, [sp, #48]
     
     mov x19, x0              // Guardar puntero al buffer destino
     fmov d8, d0              // Guardar número original
@@ -375,38 +381,81 @@ positive_number:
     fcvtzs x20, d9          // x20 contiene el número * 100
     
     // Preparar para la conversión
-    adr x21, temp_buffer    // Buffer temporal para construir el número al revés
-    mov x22, x21            // Guardar inicio del buffer
+    mov x21, x19            // Usar directamente el buffer de salida
+    mov x22, #0             // Contador de dígitos
     
-    // Procesar los dos decimales
+    // Procesar los dos decimales primero
     mov x1, #10
-    udiv x2, x20, x1        // División por 10 para el primer decimal
-    msub x3, x2, x1, x20    // Residuo (último dígito)
-    adr x4, digit_table
-    ldrb w0, [x4, x3]
-    strb w0, [x21], #1      // Guardar segundo decimal
-    
-    mov x20, x2             // Preparar para el siguiente dígito
     udiv x2, x20, x1
     msub x3, x2, x1, x20
-    ldrb w0, [x4, x3]
-    strb w0, [x21], #1      // Guardar primer decimal
+    add w3, w3, #'0'
+    strb w3, [x21, x22]
+    add x22, x22, #1
+    
+    mov x20, x2
+    udiv x2, x20, x1
+    msub x3, x2, x1, x20
+    add w3, w3, #'0'
+    strb w3, [x21, x22]
+    add x22, x22, #1
     
     // Agregar punto decimal
     mov w0, #'.'
-    strb w0, [x21], #1
+    strb w0, [x21, x22]
+    add x22, x22, #1
     
-    mov x20, x2             // Continuar con la parte entera
+    mov x20, x2
+    
     
     // Procesar parte entera
 process_integer:
-    cbz x20, end_conversion // Si llegamos a 0, terminamos
-    udiv x2, x20, x1        // División por 10
-    msub x3, x2, x1, x20    // Residuo
-    ldrb w0, [x4, x3]
-    strb w0, [x21], #1      // Guardar dígito
+    cbz x20, check_zero
+    mov x1, #10
+    udiv x2, x20, x1
+    msub x3, x2, x1, x20
+    add w3, w3, #'0'
+    strb w3, [x21, x22]
+    add x22, x22, #1
     mov x20, x2
     b process_integer
+
+check_zero:
+    cmp x22, #3             // Solo punto y decimales
+    b.ne reverse_string
+    mov w0, #'0'
+    strb w0, [x21, x22]
+    add x22, x22, #1
+
+reverse_string:
+    // Revertir los caracteres
+    mov x0, x19             // Inicio
+    sub x1, x21, #1         // Fin
+    add x1, x1, x22
+
+reverse_loop:
+    cmp x0, x1
+    b.ge done_reverse
+    ldrb w2, [x0]
+    ldrb w3, [x1]
+    strb w2, [x1]
+    strb w3, [x0]
+    add x0, x0, #1
+    sub x1, x1, #1
+    b reverse_loop
+    
+done_reverse:
+    // Agregar terminador nulo
+    add x0, x19, x22
+    mov w1, #0
+    strb w1, [x0]
+    
+    mov x0, x22             // Devolver longitud
+    
+    ldp d8, d9, [sp, #48]
+    ldp x21, x22, [sp, #32]
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #64
+    ret
     
 end_conversion:
     // Si no procesamos ningún dígito entero, poner un 0
@@ -417,7 +466,7 @@ copy_to_output:
     // Copiar los dígitos al buffer final en orden inverso
     mov x0, x19             // Destino
     sub x21, x21, #1        // Último dígito escrito
-    
+
 copy_loop:
     cmp x21, x22
     b.lt done_copy
@@ -434,7 +483,9 @@ done_copy:
     mov w0, #0
     strb w0, [x19]
     
-    // Restaurar registros y retornar
+    // Calcular y devolver la longitud
+    sub x0, x19, x20        // Longitud = posición final - posición inicial
+    
     ldp d8, d9, [sp, #48]
     ldp x21, x22, [sp, #32]
     ldp x19, x20, [sp, #16]
@@ -503,3 +554,4 @@ read_decimal_digits:
 done_reading:
     ldp x29, x30, [sp], #16
     ret
+    
