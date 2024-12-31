@@ -1,5 +1,32 @@
 .data
-
+// New constants and variables for median calculation
+    outfile_median: .asciz "medianas.txt"
+    
+    msg_med_temp_int: .asciz "Mediana Temperatura Interna: "
+    msg_med_temp_int_len = . - msg_med_temp_int
+    
+    msg_med_temp_ext: .asciz "Mediana Temperatura Externa: "
+    msg_med_temp_ext_len = . - msg_med_temp_ext
+    
+    msg_med_nivel: .asciz "Mediana Nivel de Agua: "
+    msg_med_nivel_len = . - msg_med_nivel
+    
+    // Buffers for sorted arrays (5 entries x 8 bytes each)
+    temp_interna_sorted: .skip 40
+    temp_externa_sorted: .skip 40
+    nivel_agua_sorted: .skip 40
+    
+    // Medianas
+    median_temp_int: .double 0.0
+    median_temp_ext: .double 0.0
+    median_nivel: .double 0.0
+    
+    // Buffers para strings de medianas
+    out_med_temp_int: .skip 32
+    out_med_temp_ext: .skip 32
+    out_med_nivel: .skip 32
+    
+    const_two: .double 2.0
 
     // Constantes adicionales para double_to_string
     const_zero: .double 0.0
