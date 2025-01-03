@@ -1,15 +1,50 @@
 .data
-// Add these to your .data section
-menu_msg:    .string "\n=== MENU PRINCIPAL ===\n\n1. Mostrar integrantes\n2. Analisis estadistico\n3. Generar archivos TXT\n4. Salir\n\nIngrese su opcion: "
-menu_msg_len = . - menu_msg
+    outfile_maxmin: .asciz "maxmin.txt"
+    
+    msg_max_temp_int: .asciz "Temperatura Interna Máxima: "
+    msg_max_temp_int_len = . - msg_max_temp_int
+    
+    msg_min_temp_int: .asciz "Temperatura Interna Mínima: "
+    msg_min_temp_int_len = . - msg_min_temp_int
+    
+    msg_max_temp_ext: .asciz "Temperatura Externa Máxima: "
+    msg_max_temp_ext_len = . - msg_max_temp_ext
+    
+    msg_min_temp_ext: .asciz "Temperatura Externa Mínima: "
+    msg_min_temp_ext_len = . - msg_min_temp_ext
+    
+    msg_max_nivel: .asciz "Nivel de Agua Máximo: "
+    msg_max_nivel_len = . - msg_max_nivel
+    
+    msg_min_nivel: .asciz "Nivel de Agua Mínimo: "
+    msg_min_nivel_len = . - msg_min_nivel
+    
+    // Variables para almacenar máximos y mínimos
+    max_temp_int: .double 0.0
+    min_temp_int: .double 0.0
+    max_temp_ext: .double 0.0
+    min_temp_ext: .double 0.0
+    max_nivel: .double 0.0
+    min_nivel: .double 0.0
+    
+    // Buffers para strings de máximos y mínimos
+    out_max_temp_int: .skip 32
+    out_min_temp_int: .skip 32
+    out_max_temp_ext: .skip 32
+    out_min_temp_ext: .skip 32
+    out_max_nivel: .skip 32
+    out_min_nivel: .skip 32
 
-input_buffer: .skip 2      // Buffer para la entrada del usuario
-newline_str: .string "\n"
+    // Add these to your .data section
+    menu_msg:    .string "\n=== MENU PRINCIPAL ===\n\n1. Mostrar integrantes\n2. Analisis estadistico\n3. Generar archivos TXT\n4. Salir\n\nIngrese su opcion: "
+    menu_msg_len = . - menu_msg
 
-// Add your nombres string here
-nombres:    .string "\nIntegrantes del grupo:\n\n1. Henry David Quel Santos - 202004071\n2. Pablo Alejandro Marroquin Cutz - 202200214\n3. Eric David Rojas de Leon - 202200331\n4. Jore Alejandro de Leon Batres - 202111277\n5. Roberto Miguel Garcia Santizo - 202201724\n6. Jose Javier Bonilla Salazar - 202200035\n7. Gerardo Leonel Ortiz Tobar - 202200196\n8. David Isaac García Mejía - 202202077\n\n"
-nombres_len = . - nombres
+    input_buffer: .skip 2      // Buffer para la entrada del usuario
+    newline_str: .string "\n"
 
+    // Add your nombres string here
+    nombres:    .string "\nIntegrantes del grupo:\n\n1. Henry David Quel Santos - 202004071\n2. Pablo Alejandro Marroquin Cutz - 202200214\n3. Eric David Rojas de Leon - 202200331\n4. Jore Alejandro de Leon Batres - 202111277\n5. Roberto Miguel Garcia Santizo - 202201724\n6. Jose Javier Bonilla Salazar - 202200035\n7. Gerardo Leonel Ortiz Tobar - 202200196\n8. David Isaac García Mejía - 202202077\n\n"
+    nombres_len = . - nombres
 
     // New constants and variables for median calculation
     outfile_median: .asciz "medianas.txt"
@@ -158,6 +193,7 @@ generate_txt:
 
     bl write_to_file
     bl write_medians_to_file
+    bl write_maxmin_to_file
 
     ldp x29, x30, [sp], #16
     b menu_loop
@@ -908,6 +944,8 @@ done_processing:
     bl calculate_medians
     bl convert_to_text
     bl convert_medians_to_text
+    bl calculate_maxmin
+    bl convert_maxmin_to_text
     
     // Cerrar archivo de entrada
     adr x1, fd
@@ -929,3 +967,294 @@ error_exit:
     // Si hay error, también volvemos al menú
     ldp x29, x30, [sp], #16
     b menu_loop
+
+calculate_maxmin:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Inicializar con el primer valor de cada array
+    adr x0, temp_interna
+    ldr d0, [x0]           // Primer valor como máximo y mínimo inicial
+    adr x1, max_temp_int
+    str d0, [x1]
+    adr x1, min_temp_int
+    str d0, [x1]
+    
+    adr x0, temp_externa
+    ldr d0, [x0]
+    adr x1, max_temp_ext
+    str d0, [x1]
+    adr x1, min_temp_ext
+    str d0, [x1]
+    
+    adr x0, nivel_agua
+    ldr d0, [x0]
+    adr x1, max_nivel
+    str d0, [x1]
+    adr x1, min_nivel
+    str d0, [x1]
+    
+    // Iterar sobre los arrays (índices 1-4)
+    mov x4, #1              // Empezar desde el segundo elemento
+maxmin_loop:
+    cmp x4, #5
+    b.ge maxmin_done
+    
+    // Temperatura interna
+    adr x0, temp_interna
+    lsl x1, x4, #3         // multiplicar índice por 8 (tamaño de double)
+    add x0, x0, x1
+    ldr d0, [x0]           // Cargar valor actual
+    
+    adr x1, max_temp_int
+    ldr d1, [x1]
+    fcmp d0, d1
+    b.le check_min_temp_int
+    str d0, [x1]           // Actualizar máximo
+check_min_temp_int:
+    adr x1, min_temp_int
+    ldr d1, [x1]
+    fcmp d0, d1
+    b.ge check_temp_ext
+    str d0, [x1]           // Actualizar mínimo
+    
+    // Temperatura externa
+check_temp_ext:
+    adr x0, temp_externa
+    lsl x1, x4, #3
+    add x0, x0, x1
+    ldr d0, [x0]
+    
+    adr x1, max_temp_ext
+    ldr d1, [x1]
+    fcmp d0, d1
+    b.le check_min_temp_ext
+    str d0, [x1]
+check_min_temp_ext:
+    adr x1, min_temp_ext
+    ldr d1, [x1]
+    fcmp d0, d1
+    b.ge check_nivel
+    str d0, [x1]
+    
+    // Nivel de agua
+check_nivel:
+    adr x0, nivel_agua
+    lsl x1, x4, #3
+    add x0, x0, x1
+    ldr d0, [x0]
+    
+    adr x1, max_nivel
+    ldr d1, [x1]
+    fcmp d0, d1
+    b.le check_min_nivel
+    str d0, [x1]
+check_min_nivel:
+    adr x1, min_nivel
+    ldr d1, [x1]
+    fcmp d0, d1
+    b.ge continue_loop
+    str d0, [x1]
+    
+continue_loop:
+    add x4, x4, #1
+    b maxmin_loop
+    
+maxmin_done:
+    ldp x29, x30, [sp], #16
+    ret
+
+// Función para convertir máximos y mínimos a texto
+convert_maxmin_to_text:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Convertir máximos
+    adr x0, max_temp_int
+    ldr d0, [x0]
+    adr x0, out_max_temp_int
+    bl double_to_string
+    
+    adr x0, max_temp_ext
+    ldr d0, [x0]
+    adr x0, out_max_temp_ext
+    bl double_to_string
+    
+    adr x0, max_nivel
+    ldr d0, [x0]
+    adr x0, out_max_nivel
+    bl double_to_string
+    
+    // Convertir mínimos
+    adr x0, min_temp_int
+    ldr d0, [x0]
+    adr x0, out_min_temp_int
+    bl double_to_string
+    
+    adr x0, min_temp_ext
+    ldr d0, [x0]
+    adr x0, out_min_temp_ext
+    bl double_to_string
+    
+    adr x0, min_nivel
+    ldr d0, [x0]
+    adr x0, out_min_nivel
+    bl double_to_string
+    
+    ldp x29, x30, [sp], #16
+    ret
+
+// Función para escribir máximos y mínimos a archivo
+write_maxmin_to_file:
+    stp x29, x30, [sp, -32]!
+    stp x19, x20, [sp, #16]
+    mov x29, sp
+    
+    // Crear archivo
+    mov x0, #-100
+    adr x1, outfile_maxmin
+    mov x2, #O_CREAT | O_RDWR
+    mov x3, #FILE_PERMS
+    mov x8, #56
+    svc #0
+    
+    cmp x0, #0
+    b.lt write_maxmin_error
+    
+    mov x19, x0           // Guardar fd
+    
+    // Truncar el archivo
+    mov x0, x19
+    mov x1, #0
+    mov x2, #0
+    mov x8, #46
+    svc #0
+    
+    // Escribir máximos y mínimos
+    // Temperatura interna
+    mov x0, x19
+    adr x1, msg_max_temp_int
+    mov x2, msg_max_temp_int_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_max_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, msg_min_temp_int
+    mov x2, msg_min_temp_int_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_min_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Temperatura externa
+    mov x0, x19
+    adr x1, msg_max_temp_ext
+    mov x2, msg_max_temp_ext_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_max_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, msg_min_temp_ext
+    mov x2, msg_min_temp_ext_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_min_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Nivel de agua
+    mov x0, x19
+    adr x1, msg_max_nivel
+    mov x2, msg_max_nivel_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_max_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, msg_min_nivel
+    mov x2, msg_min_nivel_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_min_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Cerrar archivo
+    mov x8, #57
+    mov x0, x19
+    svc #0
+    
+    mov x0, #0
+    b write_maxmin_done
+
+write_maxmin_error:
+    mov x0, #1
+
+write_maxmin_done:
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #32
+    ret
+
