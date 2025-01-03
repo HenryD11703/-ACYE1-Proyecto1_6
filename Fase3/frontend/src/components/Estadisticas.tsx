@@ -1,68 +1,119 @@
 import React, { useState, useRef } from 'react';
 
-/** 
- * Interface para cada fila de la tabla.
- * measure: Nombre de la medida (p.ej. "Moda", "Promedio", etc.)
- * python:  Valor para Python
- * assembly: Valor para Assembly
- */
 interface TableRow {
     measure: string;
-    python: number;
-    assembly: number;
+    temperature_internal: number;
+    temperature_external: number;
+    water_level?: number;
 }
 
-const Estadisticas: React.FC = () => {
-    // Estado para la tabla con valores planos
-    const [tableData] = useState<TableRow[]>([
-        { measure: "Moda", python: 12, assembly: 10 },
-        { measure: "Promedio", python: 20, assembly: 19 },
-        { measure: "Máximo", python: 12, assembly: 12 },
-        { measure: "Mínimo", python: 1, assembly: 1 },
-        { measure: "Rango", python: 12, assembly: 12 }
+const Estadisticas = () => {
+    const [tableData, setTableData] = useState<TableRow[]>([
+        { measure: "Moda", temperature_internal: 0, temperature_external: 0, water_level: 0 },
+        { measure: "Promedio", temperature_internal: 0, temperature_external: 0, water_level: 0 },
+        { measure: "Máximo", temperature_internal: 0, temperature_external: 0, water_level: 0 },
+        { measure: "Mínimo", temperature_internal: 0, temperature_external: 0, water_level: 0 },
+        { measure: "Rango", temperature_internal: 0, temperature_external: 0, water_level: 0 },
     ]);
 
-    // Estados para mostrar el contenido de cada archivo
+    const [txtTableData, setTxtTableData] = useState<TableRow[]>([]);
     const [fileContentCSV, setFileContentCSV] = useState<string>("");
     const [fileContentTXT, setFileContentTXT] = useState<string>("");
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Referencias a los <input type="file"> de CSV y TXT
     const csvFileInputRef = useRef<HTMLInputElement>(null);
     const txtFileInputRef = useRef<HTMLInputElement>(null);
 
-    // Maneja el click en el botón "Subir CSV" y abre el input oculto
     const handleCSVClick = () => {
         if (csvFileInputRef.current) {
+            csvFileInputRef.current.value = '';
             csvFileInputRef.current.click();
         }
     };
 
-    // Maneja el click en el botón "Subir TXT" y abre el input oculto
     const handleTXTClick = () => {
         if (txtFileInputRef.current) {
+            txtFileInputRef.current.value = '';
             txtFileInputRef.current.click();
         }
     };
 
-    // Maneja el cambio de archivo CSV
-    const handleFileChangeCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChangeCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
         const file = files[0];
         const reader = new FileReader();
 
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             if (event.target?.result) {
                 const text = event.target.result as string;
                 setFileContentCSV(text);
+
+                try {
+                    setIsLoading(true);
+                    const response = await fetch('http://localhost:5000/analyze', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ csv_data: text }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+
+                    const data = await response.json();
+
+                    setTableData([
+                        {
+                            measure: "Moda",
+                            temperature_internal: data.mode.temp_internal,
+                            temperature_external: data.mode.temp_external,
+                            water_level: data.mode.water_level
+                        },
+                        {
+                            measure: "Promedio",
+                            temperature_internal: data.mean.temp_internal,
+                            temperature_external: data.mean.temp_external,
+                            water_level: data.mean.water_level
+                        },
+                        {
+                            measure: "Máximo",
+                            temperature_internal: data.max.temp_internal,
+                            temperature_external: data.max.temp_external,
+                            water_level: data.max.water_level
+                        },
+                        {
+                            measure: "Mínimo",
+                            temperature_internal: data.min.temp_internal,
+                            temperature_external: data.min.temp_external,
+                            water_level: data.min.water_level
+                        },
+                        {
+                            measure: "Rango",
+                            temperature_internal: data.range.temp_internal,
+                            temperature_external: data.range.temp_external,
+                            water_level: data.range.water_level
+                        },
+                    ]);
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al procesar el archivo');
+                } finally {
+                    setIsLoading(false);
+                    if (csvFileInputRef.current) {
+                        csvFileInputRef.current.value = '';
+                    }
+                }
             }
         };
         reader.readAsText(file);
     };
 
-    // Maneja el cambio de archivo TXT
     const handleFileChangeTXT = (e: React.ChangeEvent<HTMLInputElement>) => {
+        debugger;
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
@@ -73,6 +124,20 @@ const Estadisticas: React.FC = () => {
             if (event.target?.result) {
                 const text = event.target.result as string;
                 setFileContentTXT(text);
+
+                const lines = text.split('\n');
+                const parsedData: TableRow[] = [
+                    { measure: "Media", temperature_internal: parseFloat(lines[1]?.split(':')[1]?.trim() || "0"), temperature_external: parseFloat(lines[2]?.split(':')[1]?.trim() || "0") },
+                    { measure: "Moda", temperature_internal: parseFloat(lines[3]?.split(':')[1]?.trim() || "0"), temperature_external: parseFloat(lines[4]?.split(':')[1]?.trim() || "0") },
+                    { measure: "Máximo", temperature_internal: parseFloat(lines[5]?.split(':')[1]?.trim() || "0"), temperature_external: parseFloat(lines[6]?.split(':')[1]?.trim() || "0") },
+                    { measure: "Mínimo", temperature_internal: parseFloat(lines[7]?.split(':')[1]?.trim() || "0"), temperature_external: parseFloat(lines[8]?.split(':')[1]?.trim() || "0") },
+                    { measure: "Rango", temperature_internal: parseFloat(lines[9]?.split(':')[1]?.trim() || "0"), temperature_external: parseFloat(lines[10]?.split(':')[1]?.trim() || "0") },
+                ];
+
+                setTxtTableData(parsedData);
+                if (txtFileInputRef.current) {
+                    txtFileInputRef.current.value = '';
+                }
             }
         };
         reader.readAsText(file);
@@ -82,19 +147,20 @@ const Estadisticas: React.FC = () => {
         <div style={containerStyle}>
             <h1 style={titleStyle}>Estadísticas</h1>
 
-            {/* Contenedor principal con flexbox para distribuir los bloques */}
             <div style={flexContainerStyle}>
-                {/* Sección: SUBIR CSV + Contenido de archivo CSV */}
                 <div style={cardStyle}>
                     <h2 style={subtitleStyle}>Archivo CSV</h2>
-
-                    <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                        <button onClick={handleCSVClick} style={buttonStyle}>
-                            Subir CSV
-                        </button>
-                    </div>
-
-                    {/* Input oculto para cargar archivo CSV */}
+                    <button
+                        onClick={handleCSVClick}
+                        style={{
+                            ...buttonStyle,
+                            opacity: isLoading ? 0.7 : 1,
+                            cursor: isLoading ? 'not-allowed' : 'pointer'
+                        }}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Procesando...' : 'Subir CSV'}
+                    </button>
                     <input
                         ref={csvFileInputRef}
                         type="file"
@@ -102,24 +168,13 @@ const Estadisticas: React.FC = () => {
                         style={{ display: 'none' }}
                         onChange={handleFileChangeCSV}
                     />
-
                     <h3 style={subtitleStyle2}>Contenido de archivo CSV</h3>
-                    <pre style={fileContentStyle}>
-                        {fileContentCSV}
-                    </pre>
+                    <pre style={fileContentStyle}>{fileContentCSV}</pre>
                 </div>
 
-                {/* Sección: SUBIR TXT + Contenido de archivo TXT */}
                 <div style={cardStyle}>
                     <h2 style={subtitleStyle}>Archivo TXT</h2>
-
-                    <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                        <button onClick={handleTXTClick} style={buttonStyle}>
-                            Subir TXT
-                        </button>
-                    </div>
-
-                    {/* Input oculto para cargar archivo TXT */}
+                    <button onClick={handleTXTClick} style={buttonStyle}>Subir TXT</button>
                     <input
                         ref={txtFileInputRef}
                         type="file"
@@ -127,30 +182,53 @@ const Estadisticas: React.FC = () => {
                         style={{ display: 'none' }}
                         onChange={handleFileChangeTXT}
                     />
-
                     <h3 style={subtitleStyle2}>Contenido de archivo TXT</h3>
-                    <pre style={fileContentStyle}>
-                        {fileContentTXT}
-                    </pre>
+                    <pre style={fileContentStyle}>{fileContentTXT}</pre>
                 </div>
+            </div>
 
-                {/* Sección: TABLA DE MEDIDAS */}
+            <h2 style={titleStyle}>Tablas de Estadísticas</h2>
+            <div style={flexContainerStyle}>
                 <div style={cardStyle}>
-                    <h2 style={subtitleStyle}>Tabla de Medidas</h2>
+                    <h3 style={subtitleStyle}>Datos del CSV</h3>
                     <table style={tableStyle}>
                         <thead>
                             <tr>
                                 <th style={thStyle}>Medidas</th>
-                                <th style={thStyle}>Python</th>
-                                <th style={thStyle}>Assembly</th>
+                                <th style={thStyle}>Temp. Interna</th>
+                                <th style={thStyle}>Temp. Externa</th>
+                                <th style={thStyle}>Nivel Agua</th>
                             </tr>
                         </thead>
                         <tbody>
                             {tableData.map((row, index) => (
                                 <tr key={index} style={trStyle}>
                                     <td style={tdStyle}>{row.measure}</td>
-                                    <td style={tdStyle}>{row.python}</td>
-                                    <td style={tdStyle}>{row.assembly}</td>
+                                    <td style={tdStyle}>{row.temperature_internal.toFixed(1)}°C</td>
+                                    <td style={tdStyle}>{row.temperature_external.toFixed(1)}°C</td>
+                                    <td style={tdStyle}>{row.water_level?.toFixed(1) || '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style={cardStyle}>
+                    <h3 style={subtitleStyle}>Datos del TXT</h3>
+                    <table style={tableStyle}>
+                        <thead>
+                            <tr>
+                                <th style={thStyle}>Medidas</th>
+                                <th style={thStyle}>Temp. Interna</th>
+                                <th style={thStyle}>Temp. Externa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {txtTableData.map((row, index) => (
+                                <tr key={index} style={trStyle}>
+                                    <td style={tdStyle}>{row.measure}</td>
+                                    <td style={tdStyle}>{row.temperature_internal.toFixed(1)}°C</td>
+                                    <td style={tdStyle}>{row.temperature_external.toFixed(1)}°C</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -160,6 +238,7 @@ const Estadisticas: React.FC = () => {
         </div>
     );
 };
+
 
 const containerStyle: React.CSSProperties = {
     width: '100%',
