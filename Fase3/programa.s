@@ -1,4 +1,29 @@
 .data
+
+    outfile_results: .asciz "resultados.txt"
+    msg_results_header: .asciz "--- Resultados Estadísticos ---\n"
+    msg_results_header_len = . - msg_results_header
+    
+    msg_media_int: .asciz "Media Interna: "
+    msg_media_int_len = . - msg_media_int
+    msg_media_ext: .asciz "Media Externa: "
+    msg_media_ext_len = . - msg_media_ext
+    msg_moda_int: .asciz "Moda Interna: "
+    msg_moda_int_len = . - msg_moda_int
+    msg_moda_ext: .asciz "Moda Externa: "
+    msg_moda_ext_len = . - msg_moda_ext
+    msg_max_int: .asciz "Max Interna: "
+    msg_max_int_len = . - msg_max_int
+    msg_min_int: .asciz "Min Interna: "
+    msg_min_int_len = . - msg_min_int
+    msg_max_ext: .asciz "Max Externa: "
+    msg_max_ext_len = . - msg_max_ext
+    msg_min_ext: .asciz "Min Externa: "
+    msg_min_ext_len = . - msg_min_ext
+    msg_rango_int: .asciz "Rango Interna: "
+    msg_rango_int_len = . - msg_rango_int
+    msg_rango_ext: .asciz "Rango Externa: "
+    msg_rango_ext_len = . - msg_rango_ext
 // Mode-related
     outfile_mode: .asciz "modas.txt"
     
@@ -236,6 +261,7 @@ generate_txt:
     bl write_maxmin_to_file
     bl write_ranges_to_file
     bl write_modes_to_file
+    bl write_results_to_file
 
     ldp x29, x30, [sp], #16
     b menu_loop
@@ -1643,6 +1669,287 @@ write_mode_error:
     mov x0, #1
 
 write_mode_done:
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #32
+    ret
+
+write_results_to_file:
+    stp x29, x30, [sp, -32]!
+    stp x19, x20, [sp, #16]
+    mov x29, sp
+    
+    // Create file
+    mov x0, #-100
+    adr x1, outfile_results
+    mov x2, #O_CREAT | O_RDWR
+    mov x3, #FILE_PERMS
+    mov x8, #56
+    svc #0
+    
+    cmp x0, #0
+    b.lt write_results_error
+    mov x19, x0
+    
+    // Write header
+    mov x0, x19
+    adr x1, msg_results_header
+    mov x2, msg_results_header_len
+    mov x8, #64
+    svc #0
+    
+    // Write Media Interna
+    mov x0, x19
+    adr x1, msg_media_int
+    mov x2, msg_media_int_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Media Externa
+    mov x0, x19
+    adr x1, msg_media_ext
+    mov x2, msg_media_ext_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Moda Interna
+    mov x0, x19
+    adr x1, msg_moda_int
+    mov x2, msg_moda_int_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_mode_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Moda Externa
+    mov x0, x19
+    adr x1, msg_moda_ext
+    mov x2, msg_moda_ext_len
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, out_mode_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+
+    // Rango Interna
+    mov x0, x19
+    adr x1, msg_range_temp_int
+    mov x2, #14
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, out_range_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1  
+    mov x8, #64
+    svc #0
+
+    // Rango Externa
+    mov x0, x19
+    adr x1, msg_range_temp_ext
+    mov x2, #14
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, out_range_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+
+    // Rango Nivel
+    mov x0, x19
+    adr x1, msg_range_nivel
+    mov x2, #14
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, out_range_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+
+    // Máximo Interna
+    mov x0, x19
+    adr x1, msg_max_int
+    mov x2, msg_max_int_len
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, out_max_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+
+    // Máximo Externa
+    mov x0, x19
+    adr x1, msg_max_ext
+    mov x2, msg_max_ext_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_max_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+
+    // Máximo Nivel
+    mov x0, x19
+    adr x1, msg_max_nivel
+    mov x2, #13
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_max_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+
+    // Mínimo Interna
+    mov x0, x19
+    adr x1, msg_min_int
+    mov x2, msg_min_int_len
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, out_min_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+
+    // Mínimo Externa
+    mov x0, x19
+    adr x1, msg_min_ext
+    mov x2, msg_min_ext_len
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, out_min_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+
+    // Mínimo Nivel
+    mov x0, x19
+    adr x1, msg_min_nivel
+    mov x2, #13
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_min_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    // Close file
+    mov x8, #57
+    mov x0, x19
+    svc #0
+    
+    mov x0, #0
+    b write_results_done
+
+write_results_error:
+    mov x0, #1
+
+write_results_done:
     ldp x19, x20, [sp, #16]
     ldp x29, x30, [sp], #32
     ret
