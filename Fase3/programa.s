@@ -1,4 +1,26 @@
 .data
+    // Nuevas variables para rangos
+    outfile_range: .asciz "rangos.txt"
+    
+    msg_range_temp_int: .asciz "Rango Temperatura Interna: "
+    msg_range_temp_int_len = . - msg_range_temp_int
+    
+    msg_range_temp_ext: .asciz "Rango Temperatura Externa: "
+    msg_range_temp_ext_len = . - msg_range_temp_ext
+    
+    msg_range_nivel: .asciz "Rango Nivel de Agua: "
+    msg_range_nivel_len = . - msg_range_nivel
+    
+    // Variables para almacenar rangos
+    range_temp_int: .double 0.0
+    range_temp_ext: .double 0.0
+    range_nivel: .double 0.0
+    
+    // Buffers para strings de rangos
+    out_range_temp_int: .skip 32
+    out_range_temp_ext: .skip 32
+    out_range_nivel: .skip 32
+
     outfile_maxmin: .asciz "maxmin.txt"
     
     msg_max_temp_int: .asciz "Temperatura Interna Máxima: "
@@ -42,7 +64,6 @@
     input_buffer: .skip 2      // Buffer para la entrada del usuario
     newline_str: .string "\n"
 
-    // Add your nombres string here
     nombres:    .string "\nIntegrantes del grupo:\n\n1. Henry David Quel Santos - 202004071\n2. Pablo Alejandro Marroquin Cutz - 202200214\n3. Eric David Rojas de Leon - 202200331\n4. Jore Alejandro de Leon Batres - 202111277\n5. Roberto Miguel Garcia Santizo - 202201724\n6. Jose Javier Bonilla Salazar - 202200035\n7. Gerardo Leonel Ortiz Tobar - 202200196\n8. David Isaac García Mejía - 202202077\n\n"
     nombres_len = . - nombres
 
@@ -194,6 +215,7 @@ generate_txt:
     bl write_to_file
     bl write_medians_to_file
     bl write_maxmin_to_file
+    bl write_ranges_to_file
 
     ldp x29, x30, [sp], #16
     b menu_loop
@@ -946,6 +968,8 @@ done_processing:
     bl convert_medians_to_text
     bl calculate_maxmin
     bl convert_maxmin_to_text
+    bl calculate_ranges
+    bl convert_ranges_to_text
     
     // Cerrar archivo de entrada
     adr x1, fd
@@ -1254,6 +1278,165 @@ write_maxmin_error:
     mov x0, #1
 
 write_maxmin_done:
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #32
+    ret
+
+calculate_ranges:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Calcular rango temperatura interna
+    adr x0, max_temp_int
+    ldr d0, [x0]
+    adr x0, min_temp_int
+    ldr d1, [x0]
+    fsub d0, d0, d1
+    adr x0, range_temp_int
+    str d0, [x0]
+    
+    // Calcular rango temperatura externa
+    adr x0, max_temp_ext
+    ldr d0, [x0]
+    adr x0, min_temp_ext
+    ldr d1, [x0]
+    fsub d0, d0, d1
+    adr x0, range_temp_ext
+    str d0, [x0]
+    
+    // Calcular rango nivel de agua
+    adr x0, max_nivel
+    ldr d0, [x0]
+    adr x0, min_nivel
+    ldr d1, [x0]
+    fsub d0, d0, d1
+    adr x0, range_nivel
+    str d0, [x0]
+    
+    ldp x29, x30, [sp], #16
+    ret
+
+// Función para convertir rangos a texto
+convert_ranges_to_text:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Convertir rango temperatura interna
+    adr x0, range_temp_int
+    ldr d0, [x0]
+    adr x0, out_range_temp_int
+    bl double_to_string
+    
+    // Convertir rango temperatura externa
+    adr x0, range_temp_ext
+    ldr d0, [x0]
+    adr x0, out_range_temp_ext
+    bl double_to_string
+    
+    // Convertir rango nivel de agua
+    adr x0, range_nivel
+    ldr d0, [x0]
+    adr x0, out_range_nivel
+    bl double_to_string
+    
+    ldp x29, x30, [sp], #16
+    ret
+
+// Función para escribir rangos a archivo
+write_ranges_to_file:
+    stp x29, x30, [sp, -32]!
+    stp x19, x20, [sp, #16]
+    mov x29, sp
+    
+    // Crear archivo
+    mov x0, #-100
+    adr x1, outfile_range
+    mov x2, #O_CREAT | O_RDWR
+    mov x3, #FILE_PERMS
+    mov x8, #56
+    svc #0
+    
+    cmp x0, #0
+    b.lt write_range_error
+    
+    mov x19, x0           // Guardar fd
+    
+    // Truncar el archivo
+    mov x0, x19
+    mov x1, #0
+    mov x2, #0
+    mov x8, #46
+    svc #0
+    
+    // Escribir rango temperatura interna
+    mov x0, x19
+    adr x1, msg_range_temp_int
+    mov x2, msg_range_temp_int_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_range_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Escribir rango temperatura externa
+    mov x0, x19
+    adr x1, msg_range_temp_ext
+    mov x2, msg_range_temp_ext_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_range_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Escribir rango nivel de agua
+    mov x0, x19
+    adr x1, msg_range_nivel
+    mov x2, msg_range_nivel_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_range_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Cerrar archivo
+    mov x8, #57
+    mov x0, x19
+    svc #0
+    
+    mov x0, #0
+    b write_range_done
+
+write_range_error:
+    mov x0, #1
+
+write_range_done:
     ldp x19, x20, [sp, #16]
     ldp x29, x30, [sp], #32
     ret
