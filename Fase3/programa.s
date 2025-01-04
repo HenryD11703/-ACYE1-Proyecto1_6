@@ -1,37 +1,18 @@
 .data
     outfile_results: .asciz "resultados.txt"
-    msg_results_header: .asciz "--- Resultados Estadísticos ---\n"
-    msg_results_header_len = . - msg_results_header
 
-    msg_media_int: .asciz "Media Interna: "
-    msg_media_int_len = . - msg_media_int
+    msg_results_header: .string "--- Resultados Estadísticos ---\n"  // Usar .string en lugar de .asciz
 
-    msg_media_ext: .asciz "Media Externa: "
-    msg_media_ext_len = . - msg_media_ext
-
-    msg_moda_int: .asciz "Moda Interna: "
-    msg_moda_int_len = . - msg_moda_int
-
-    msg_moda_ext: .asciz "Moda Externa: "
-    msg_moda_ext_len = . - msg_moda_ext
-
-    msg_max_int: .asciz "Max Interna: "
-    msg_max_int_len = . - msg_max_int
-
-    msg_min_int: .asciz "Min Interna: "
-    msg_min_int_len = . - msg_min_int
-
-    msg_max_ext: .asciz "Max Externa: "
-    msg_max_ext_len = . - msg_max_ext
-
-    msg_min_ext: .asciz "Min Externa: "
-    msg_min_ext_len = . - msg_min_ext
-
-    msg_rango_int: .asciz "Rango Interna: "
-    msg_rango_int_len = . - msg_rango_int
-
-    msg_rango_ext: .asciz "Rango Externa: "
-    msg_rango_ext_len = . - msg_rango_ext
+    msg_media_int: .string "Media Interna: "    
+    msg_media_ext: .string "Media Externa: "    
+    msg_moda_int: .string "Moda Interna: "     
+    msg_moda_ext: .string "Moda Externa: "      
+    msg_max_int: .string "Max Interna: "       
+    msg_min_int: .string "Min Interna: "       
+    msg_max_ext: .string "Max Externa: "       
+    msg_min_ext: .string "Min Externa: "       
+    msg_rango_int: .string "Rango Interna: "    
+    msg_rango_ext: .string "Rango Externa: "
 
     // Mode-related
     outfile_mode: .asciz "modas.txt"
@@ -557,6 +538,8 @@ reverse_loop:
     b reverse_loop
     
 done_reverse:
+    mov w0, #'0'            // Agregar carácter nulo al final
+    strb w0, [x21, x22]
     // Agregar terminador nulo
     add x0, x19, x22
     mov w1, #0
@@ -1707,24 +1690,31 @@ write_results_to_file:
     mov x8, #46
     svc #0
     
-    // Write header
-    mov x0, x19
     adr x1, msg_results_header
-    mov x2, msg_results_header_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    // Write Media Interna
-    mov x0, x19
     adr x1, msg_media_int
-    mov x2, msg_media_int_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_temp_int
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
     mov x0, x19
@@ -1734,16 +1724,22 @@ write_results_to_file:
     svc #0
     
     // Write Media Externa
-    mov x0, x19
     adr x1, msg_media_ext
-    mov x2, msg_media_ext_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_temp_ext
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
     mov x0, x19
@@ -1753,16 +1749,22 @@ write_results_to_file:
     svc #0
     
     // Write Moda Interna
-    mov x0, x19
     adr x1, msg_moda_int
-    mov x2, msg_moda_int_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_mode_temp_int
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
     mov x0, x19
@@ -1772,18 +1774,24 @@ write_results_to_file:
     svc #0
     
     // Write Moda Externa
-    mov x0, x19
     adr x1, msg_moda_ext
-    mov x2, msg_moda_ext_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_mode_temp_ext
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
-    
+
     mov x0, x19
     adr x1, newline
     mov x2, #1
@@ -1791,16 +1799,22 @@ write_results_to_file:
     svc #0
     
     // Write Max Interna
-    mov x0, x19
     adr x1, msg_max_int
-    mov x2, msg_max_int_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_max_temp_int
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
     mov x0, x19
@@ -1810,16 +1824,22 @@ write_results_to_file:
     svc #0
     
     // Write Min Interna
-    mov x0, x19
     adr x1, msg_min_int
-    mov x2, msg_min_int_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_min_temp_int
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
     mov x0, x19
@@ -1829,16 +1849,22 @@ write_results_to_file:
     svc #0
     
     // Write Max Externa
-    mov x0, x19
     adr x1, msg_max_ext
-    mov x2, msg_max_ext_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_max_temp_ext
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
     mov x0, x19
@@ -1848,16 +1874,22 @@ write_results_to_file:
     svc #0
     
     // Write Min Externa
-    mov x0, x19
     adr x1, msg_min_ext
-    mov x2, msg_min_ext_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_min_temp_ext
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
     mov x0, x19
@@ -1867,16 +1899,22 @@ write_results_to_file:
     svc #0
     
     // Write Rango Interna
-    mov x0, x19
     adr x1, msg_rango_int
-    mov x2, msg_rango_int_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_range_temp_int
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
     mov x0, x19
@@ -1886,16 +1924,22 @@ write_results_to_file:
     svc #0
     
     // Write Rango Externa
-    mov x0, x19
     adr x1, msg_rango_ext
-    mov x2, msg_rango_ext_len
-    mov x8, #64
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
-    mov x0, x19
     adr x1, out_range_temp_ext
-    mov x2, #32
-    mov x8, #64
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
     svc #0
     
     mov x0, x19
@@ -1920,3 +1964,13 @@ write_results_done:
     ldp x29, x30, [sp], #32
     ret
 
+strlen:
+    mov x2, x1         // Save start address
+strlen_loop:
+    ldrb w0, [x1]      // Load byte
+    cbz w0, strlen_done // If zero, we're done
+    add x1, x1, #1     // Move to next byte
+    b strlen_loop
+strlen_done:
+    sub x0, x1, x2     // Calculate length
+    ret
