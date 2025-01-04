@@ -1,4 +1,38 @@
 .data
+    outfile_results: .asciz "resultados.txt"
+
+    msg_results_header: .string "--- Resultados Estadísticos ---\n"  // Usar .string en lugar de .asciz
+
+    msg_media_int: .string "Media Interna: "    
+    msg_media_ext: .string "Media Externa: "    
+    msg_moda_int: .string "Moda Interna: "     
+    msg_moda_ext: .string "Moda Externa: "      
+    msg_max_int: .string "Max Interna: "       
+    msg_min_int: .string "Min Interna: "       
+    msg_max_ext: .string "Max Externa: "       
+    msg_min_ext: .string "Min Externa: "       
+    msg_rango_int: .string "Rango Interna: "    
+    msg_rango_ext: .string "Rango Externa: "
+
+    // Mode-related
+    outfile_mode: .asciz "modas.txt"
+    
+    msg_mode_temp_int: .asciz "Moda Temperatura Interna: "
+    msg_mode_temp_int_len = . - msg_mode_temp_int
+    
+    msg_mode_temp_ext: .asciz "Moda Temperatura Externa: "
+    msg_mode_temp_ext_len = . - msg_mode_temp_ext
+    
+    msg_mode_nivel: .asciz "Moda Nivel de Agua: "
+    msg_mode_nivel_len = . - msg_mode_nivel
+    
+    mode_temp_int: .double 0.0
+    mode_temp_ext: .double 0.0
+    mode_nivel: .double 0.0
+    
+    out_mode_temp_int: .skip 32
+    out_mode_temp_ext: .skip 32
+    out_mode_nivel: .skip 32
     // Nuevas variables para rangos
     outfile_range: .asciz "rangos.txt"
     
@@ -216,6 +250,9 @@ generate_txt:
     bl write_medians_to_file
     bl write_maxmin_to_file
     bl write_ranges_to_file
+    bl write_modes_to_file
+
+    bl write_results_to_file
 
     ldp x29, x30, [sp], #16
     b menu_loop
@@ -501,6 +538,8 @@ reverse_loop:
     b reverse_loop
     
 done_reverse:
+    mov w0, #'0'            // Agregar carácter nulo al final
+    strb w0, [x21, x22]
     // Agregar terminador nulo
     add x0, x19, x22
     mov w1, #0
@@ -970,6 +1009,8 @@ done_processing:
     bl convert_maxmin_to_text
     bl calculate_ranges
     bl convert_ranges_to_text
+    bl calculate_modes
+    bl convert_modes_to_text
     
     // Cerrar archivo de entrada
     adr x1, fd
@@ -1441,3 +1482,495 @@ write_range_done:
     ldp x29, x30, [sp], #32
     ret
 
+calculate_modes:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    // Calculate mode for each array
+    adr x0, temp_interna
+    adr x1, mode_temp_int
+    bl find_mode
+    
+    adr x0, temp_externa
+    adr x1, mode_temp_ext
+    bl find_mode
+    
+    adr x0, nivel_agua
+    adr x1, mode_nivel
+    bl find_mode
+    
+    ldp x29, x30, [sp], #16
+    ret
+
+find_mode:
+    // x0 = array address, x1 = result address
+    stp x29, x30, [sp, -48]!
+    stp x19, x20, [sp, #16]
+    stp x21, x22, [sp, #32]
+    
+    mov x19, x0          // array address
+    mov x20, x1          // result address
+    fmov d6, xzr         // current mode
+    mov w21, #0          // max frequency
+    
+    mov x4, #0          // outer loop counter
+outer_mode_loop:
+    cmp x4, #5
+    b.ge end_mode_calc
+    
+    mov w22, #0          // current frequency
+    ldr d0, [x19, x4, lsl #3]  // current value
+    
+    mov x5, #0          // inner loop counter
+inner_mode_loop:
+    cmp x5, #5
+    b.ge check_frequency
+    
+    ldr d1, [x19, x5, lsl #3]
+    fcmp d0, d1
+    b.ne continue_inner
+    add w22, w22, #1
+    
+continue_inner:
+    add x5, x5, #1
+    b inner_mode_loop
+    
+check_frequency:
+    cmp w22, w21
+    b.le continue_outer
+    mov w21, w22
+    fmov d6, d0
+    
+continue_outer:
+    add x4, x4, #1
+    b outer_mode_loop
+    
+end_mode_calc:
+    str d6, [x20]
+    
+    ldp x21, x22, [sp, #32]
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #48
+    ret
+
+convert_modes_to_text:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+    
+    adr x0, mode_temp_int
+    ldr d0, [x0]
+    adr x0, out_mode_temp_int
+    bl double_to_string
+    
+    adr x0, mode_temp_ext
+    ldr d0, [x0]
+    adr x0, out_mode_temp_ext
+    bl double_to_string
+    
+    adr x0, mode_nivel
+    ldr d0, [x0]
+    adr x0, out_mode_nivel
+    bl double_to_string
+    
+    ldp x29, x30, [sp], #16
+    ret
+
+write_modes_to_file:
+    stp x29, x30, [sp, -32]!
+    stp x19, x20, [sp, #16]
+    mov x29, sp
+    
+    mov x0, #-100
+    adr x1, outfile_mode
+    mov x2, #O_CREAT | O_RDWR
+    mov x3, #FILE_PERMS
+    mov x8, #56
+    svc #0
+    
+    cmp x0, #0
+    b.lt write_mode_error
+    mov x19, x0
+    
+    mov x0, x19
+    mov x1, #0
+    mov x2, #0
+    mov x8, #46
+    svc #0
+    
+    mov x0, x19
+    adr x1, msg_mode_temp_int
+    mov x2, msg_mode_temp_int_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_mode_temp_int
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, msg_mode_temp_ext
+    mov x2, msg_mode_temp_ext_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_mode_temp_ext
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, msg_mode_nivel
+    mov x2, msg_mode_nivel_len
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, out_mode_nivel
+    mov x2, #32
+    mov x8, #64
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    mov x8, #57
+    mov x0, x19
+    svc #0
+    
+    mov x0, #0
+    b write_mode_done
+
+write_mode_error:
+    mov x0, #1
+
+write_mode_done:
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #32
+    ret
+
+write_results_to_file:
+    stp x29, x30, [sp, -32]!
+    stp x19, x20, [sp, #16]
+    mov x29, sp
+    
+    // Create file
+    mov x0, #-100
+    adr x1, outfile_results
+    mov x2, #O_CREAT | O_RDWR
+    mov x3, #FILE_PERMS
+    mov x8, #56
+    svc #0
+    
+    cmp x0, #0
+    b.lt write_results_error
+    mov x19, x0
+    
+    // Truncate file
+    mov x0, x19
+    mov x1, #0
+    mov x2, #0
+    mov x8, #46
+    svc #0
+    
+    adr x1, msg_results_header
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, msg_media_int
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_temp_int
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Media Externa
+    adr x1, msg_media_ext
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_temp_ext
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Moda Interna
+    adr x1, msg_moda_int
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_mode_temp_int
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Moda Externa
+    adr x1, msg_moda_ext
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_mode_temp_ext
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Max Interna
+    adr x1, msg_max_int
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_max_temp_int
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Min Interna
+    adr x1, msg_min_int
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_min_temp_int
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Max Externa
+    adr x1, msg_max_ext
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_max_temp_ext
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Min Externa
+    adr x1, msg_min_ext
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_min_temp_ext
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Rango Interna
+    adr x1, msg_rango_int
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_range_temp_int
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Write Rango Externa
+    adr x1, msg_rango_ext
+    mov x21, x1        // Guardar dirección
+    bl strlen          // Obtener longitud real
+    mov x2, x0         // Usar la longitud calculada
+    mov x1, x21        // Restaurar dirección
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    adr x1, out_range_temp_ext
+    mov x21, x1        // Guardar dirección del buffer
+    bl strlen          // Llamar a strlen
+    mov x2, x0         // Usar la longitud retornada
+    mov x1, x21        // Restaurar dirección del buffer
+    mov x0, x19        // File descriptor
+    mov x8, #64        // write syscall
+    svc #0
+    
+    mov x0, x19
+    adr x1, newline
+    mov x2, #1
+    mov x8, #64
+    svc #0
+    
+    // Close file
+    mov x8, #57
+    mov x0, x19
+    svc #0
+    
+    mov x0, #0
+    b write_results_done
+
+write_results_error:
+    mov x0, #1
+
+write_results_done:
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #32
+    ret
+
+strlen:
+    mov x2, x1         // Save start address
+strlen_loop:
+    ldrb w0, [x1]      // Load byte
+    cbz w0, strlen_done // If zero, we're done
+    add x1, x1, #1     // Move to next byte
+    b strlen_loop
+strlen_done:
+    sub x0, x1, x2     // Calculate length
+    ret

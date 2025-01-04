@@ -1,6 +1,6 @@
-Fecha y Hora,Temperatura Interna (°C),Temperatura Externa (°C),Estado del Suelo,Nivel de Agua,Sistema de Riego,Sistema de Ventilación
-2024-01-01 08:00:00,25.0,22.0,Húmedo,8.5,Activado,Desactivado
-2024-01-01 09:00:00,27.0,24.0,Seco,7.8,Desactivado,Activado
-2024-01-01 10:00:00,30.0,28.0,Húmedo,6.5,Activado,Activado
-2024-01-01 11:00:00,32.0,29.0,Seco,5.9,Desactivado,Desactivado
-2024-01-01 12:00:00,33.0,30.0,Húmedo,5.2,Activado,Activado
+timestamp,temperaturaInterna,temperaturaExterna,humedadSuelo,nivel,periodoActivacionAgua,periodoActivacionAire
+2024-12-25 10:34:17,22.54,22.98,Seco,53,Desactivado,Desactivado
+2024-12-21 06:50:28,18.33,20.82,Seco,49,Activado,Desactivado
+2024-12-24 17:34:22,19.32,22.06,Seco,64,Desactivado,Desactivado
+2024-12-23 14:59:26,20.41,19.96,Seco,25,Desactivado,Desactivado
+2024-12-26 04:20:00,19.36,22.51,Seco,59,Desactivado,Desactivado

@@ -1,0 +1,11 @@
+--- Resultados Estadísticos ---
+Media Interna: 19.99
+Media Externa: 21.66
+Moda Interna: 22.54
+Moda Externa: 22.97
+Max Interna: 22.54
+Min Interna: 18.33
+Max Externa: 22.97
+Min Externa: 19.95
+Rango Interna: 4.20
+Rango Externa: 3.01
